@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../presentation/screens/splash/splash_screen.dart';
+import '../../presentation/screens/onboarding/permission_screen.dart';
 
 /// Named route constants
 class AppRoutes {
@@ -24,10 +25,7 @@ final appRouter = GoRouter(
   initialLocation: AppRoutes.splash,
   routes: [
     GoRoute(path: AppRoutes.splash, builder: (context, state) => const SplashScreen()),
-    GoRoute(
-      path: AppRoutes.permission,
-      builder: (context, state) => const _PlaceholderScreen(title: 'Permission'),
-    ),
+    GoRoute(path: AppRoutes.permission, builder: (context, state) => const PermissionScreen()),
     ShellRoute(
       builder: (context, state, child) => _MainShell(child: child),
       routes: [
