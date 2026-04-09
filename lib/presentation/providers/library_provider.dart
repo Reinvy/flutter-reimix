@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/datasources/local/media_store_datasource.dart';
 import '../../data/datasources/local/objectbox_datasource.dart';
 import '../../data/repositories_impl/song_repository_impl.dart';
+import '../../domain/entities/album.dart';
+import '../../domain/entities/artist.dart';
 import '../../domain/entities/song.dart';
 import '../../main.dart' show objectBox;
 
@@ -36,3 +38,29 @@ class LibraryNotifier extends AsyncNotifier<List<Song>> {
 }
 
 final libraryProvider = AsyncNotifierProvider<LibraryNotifier, List<Song>>(LibraryNotifier.new);
+
+// ── Derived providers ─────────────────────────────────────────────────────────
+
+/// Last 20 songs played, sorted by lastPlayedAt descending.
+final recentlyPlayedProvider = FutureProvider<List<Song>>((ref) async {
+  final songs = await ref.watch(libraryProvider.future);
+  final played = songs.where((s) => s.lastPlayedAt != null).toList()
+    ..sort((a, b) => b.lastPlayedAt!.compareTo(a.lastPlayedAt!));
+  return played.take(20).toList();
+});
+
+/// Up to 10 favorite songs.
+final favoritesProvider = FutureProvider<List<Song>>((ref) async {
+  final songs = await ref.watch(libraryProvider.future);
+  return songs.where((s) => s.isFavorite).take(10).toList();
+});
+
+/// All albums derived from stored songs.
+final albumsProvider = FutureProvider<List<Album>>((ref) {
+  return ref.read(songRepositoryProvider).getAllAlbums();
+});
+
+/// All artists derived from stored songs.
+final artistsProvider = FutureProvider<List<Artist>>((ref) {
+  return ref.read(songRepositoryProvider).getAllArtists();
+});

@@ -1,7 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import '../../presentation/screens/splash/splash_screen.dart';
+import '../constants/app_dimensions.dart';
+import '../../presentation/screens/home/home_screen.dart';
+import '../../presentation/screens/library/library_screen.dart';
+import '../../presentation/screens/now_playing/now_playing_screen.dart';
 import '../../presentation/screens/onboarding/permission_screen.dart';
+import '../../presentation/screens/splash/splash_screen.dart';
+import '../../presentation/widgets/mini_player.dart';
 
 /// Named route constants
 class AppRoutes {
@@ -33,17 +38,9 @@ final appRouter = GoRouter(
           path: AppRoutes.home,
           redirect: (context, state) =>
               state.matchedLocation == AppRoutes.home ? AppRoutes.homeIndex : null,
-          routes: [
-            GoRoute(
-              path: 'index',
-              builder: (context, state) => const _PlaceholderScreen(title: 'Home'),
-            ),
-          ],
+          routes: [GoRoute(path: 'index', builder: (context, state) => const HomeScreen())],
         ),
-        GoRoute(
-          path: AppRoutes.library,
-          builder: (context, state) => const _PlaceholderScreen(title: 'Library'),
-        ),
+        GoRoute(path: AppRoutes.library, builder: (context, state) => const LibraryScreen()),
         GoRoute(
           path: AppRoutes.playlists,
           builder: (context, state) => const _PlaceholderScreen(title: 'Playlists'),
@@ -61,10 +58,7 @@ final appRouter = GoRouter(
         ),
       ],
     ),
-    GoRoute(
-      path: AppRoutes.nowPlaying,
-      builder: (context, state) => const _PlaceholderScreen(title: 'Now Playing'),
-    ),
+    GoRoute(path: AppRoutes.nowPlaying, builder: (context, state) => const NowPlayingScreen()),
     GoRoute(
       path: AppRoutes.focusMode,
       builder: (context, state) => const _PlaceholderScreen(title: 'Focus Mode'),
@@ -103,7 +97,18 @@ class _MainShell extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: child,
+      body: Stack(
+        children: [
+          child,
+          // Mini player sits above the bottom nav bar
+          const Positioned(
+            left: 0,
+            right: 0,
+            bottom: AppDimensions.bottomNavHeight,
+            child: MiniPlayer(),
+          ),
+        ],
+      ),
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _selectedIndex(context),
         onTap: (i) => context.go(_tabs[i]),
