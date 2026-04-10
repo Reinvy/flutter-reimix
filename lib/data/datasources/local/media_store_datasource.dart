@@ -14,12 +14,21 @@ class MediaStoreDatasource {
 
   static const _supportedFormats = {'mp3', 'flac', 'aac', 'm4a', 'ogg', 'wav'};
 
+  /// Guards against concurrent [querySongs] calls which crash with
+  /// "Reply already submitted" on the platform channel.
+  Future<List<SongModel>>? _ongoingScan;
+
   MediaStoreDatasource(this._db);
 
   /// Queries all audio files, filters to [_supportedFormats], merges with
   /// existing database records (preserving isFavorite, playCount, etc.),
   /// and returns the complete persisted list.
-  Future<List<SongModel>> scanAndSave() async {
+  Future<List<SongModel>> scanAndSave() {
+    _ongoingScan ??= _doScan().whenComplete(() => _ongoingScan = null);
+    return _ongoingScan!;
+  }
+
+  Future<List<SongModel>> _doScan() async {
     final rawSongs = await _audioQuery.querySongs(
       sortType: SongSortType.TITLE,
       orderType: OrderType.ASC_OR_SMALLER,

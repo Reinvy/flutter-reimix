@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:permission_handler/permission_handler.dart';
 
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_strings.dart';
 import '../../../core/constants/app_text_styles.dart';
+import '../../providers/library_provider.dart';
 import 'songs_tab.dart';
 import 'albums_tab.dart';
 import 'artists_tab.dart';
@@ -18,6 +20,9 @@ class LibraryScreen extends ConsumerWidget {
     final bgColor = isDark ? AppColorsDark.background : AppColorsLight.background;
     final accentColor = Theme.of(context).colorScheme.tertiary;
     final textColor = isDark ? AppColorsDark.onBackground : AppColorsLight.onBackground;
+
+    final libraryState = ref.watch(libraryProvider);
+    final showPermissionBanner = libraryState.hasError;
 
     return DefaultTabController(
       length: 4,
@@ -41,7 +46,28 @@ class LibraryScreen extends ConsumerWidget {
             ],
           ),
         ),
-        body: const TabBarView(children: [SongsTab(), AlbumsTab(), ArtistsTab(), FoldersTab()]),
+        body: Column(
+          children: [
+            if (showPermissionBanner)
+              MaterialBanner(
+                backgroundColor: isDark ? AppColorsDark.surface : AppColorsLight.surface,
+                leading: Icon(Icons.folder_off_outlined, color: accentColor),
+                content: Text(
+                  AppStrings.storagePermissionBanner,
+                  style: AppTextStyles.bodyMedium(color: textColor),
+                ),
+                actions: [
+                  TextButton(
+                    onPressed: openAppSettings,
+                    child: Text(AppStrings.openSettings, style: TextStyle(color: accentColor)),
+                  ),
+                ],
+              ),
+            const Expanded(
+              child: TabBarView(children: [SongsTab(), AlbumsTab(), ArtistsTab(), FoldersTab()]),
+            ),
+          ],
+        ),
       ),
     );
   }

@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -45,14 +47,18 @@ class _PermissionScreenState extends ConsumerState<PermissionScreen>
     setState(() => _isRequesting = true);
 
     // API 33+: READ_MEDIA_AUDIO; older: READ_EXTERNAL_STORAGE
-    const permission = Permission.audio;
-    final status = await permission.request();
+    final audioStatus = await Permission.audio.request();
+
+    // API 33+: READ_MEDIA_IMAGES for album art (non-critical; audio gates the flow)
+    if (Platform.isAndroid) {
+      await Permission.photos.request();
+    }
 
     if (!mounted) return;
 
-    if (status.isGranted) {
+    if (audioStatus.isGranted) {
       await _onPermissionGranted();
-    } else if (status.isPermanentlyDenied) {
+    } else if (audioStatus.isPermanentlyDenied) {
       setState(() => _isRequesting = false);
       _showSettingsDialog();
     } else {
@@ -109,11 +115,11 @@ class _PermissionScreenState extends ConsumerState<PermissionScreen>
           TextButton(
             onPressed: () async {
               Navigator.of(ctx).pop();
-              final status = await Permission.audio.request();
+              final retryStatus = await Permission.audio.request();
               if (!mounted) return;
-              if (status.isGranted) {
+              if (retryStatus.isGranted) {
                 await _onPermissionGranted();
-              } else if (status.isPermanentlyDenied) {
+              } else if (retryStatus.isPermanentlyDenied) {
                 _showSettingsDialog();
               }
             },

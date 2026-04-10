@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 
 import '../../../core/constants/app_colors.dart';
@@ -19,11 +20,31 @@ final _notifications = FlutterLocalNotificationsPlugin();
 
 Future<void> _initNotifications() async {
   const android = AndroidInitializationSettings('@mipmap/ic_launcher');
-  const settings = InitializationSettings(android: android);
+  const iosSettings = DarwinInitializationSettings(
+    requestAlertPermission: false,
+    requestBadgePermission: false,
+    requestSoundPermission: false,
+  );
+  const settings = InitializationSettings(android: android, iOS: iosSettings);
   await _notifications.initialize(settings);
+
+  // Request notification permission at runtime (Android 13+ / iOS)
+  if (Platform.isAndroid) {
+    await Permission.notification.request();
+  } else if (Platform.isIOS) {
+    await _notifications
+        .resolvePlatformSpecificImplementation<IOSFlutterLocalNotificationsPlugin>()
+        ?.requestPermissions(alert: true, badge: false, sound: true);
+  }
 }
 
 Future<void> _showSleepTimerEndedNotification() async {
+  // Silently skip if notification permission was denied
+  if (Platform.isAndroid) {
+    final status = await Permission.notification.status;
+    if (!status.isGranted) return;
+  }
+
   const androidDetails = AndroidNotificationDetails(
     'reimix_sleep_timer',
     'Sleep Timer',
@@ -31,7 +52,8 @@ Future<void> _showSleepTimerEndedNotification() async {
     importance: Importance.defaultImportance,
     priority: Priority.defaultPriority,
   );
-  const details = NotificationDetails(android: androidDetails);
+  const iosDetails = DarwinNotificationDetails(presentAlert: true, presentSound: true);
+  const details = NotificationDetails(android: androidDetails, iOS: iosDetails);
   await _notifications.show(1, 'Reimix', 'Sleep timer ended', details);
 }
 
