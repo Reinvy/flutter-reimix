@@ -1,12 +1,25 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../constants/app_dimensions.dart';
+import '../../presentation/providers/mood_provider.dart';
+import '../../presentation/screens/focus_mode/focus_mode_screen.dart';
 import '../../presentation/screens/home/home_screen.dart';
 import '../../presentation/screens/library/library_screen.dart';
 import '../../presentation/screens/now_playing/now_playing_screen.dart';
 import '../../presentation/screens/onboarding/permission_screen.dart';
+import '../../presentation/screens/playlist/playlist_detail_screen.dart';
+import '../../presentation/screens/playlist/playlists_screen.dart';
+import '../../presentation/screens/search/search_screen.dart';
 import '../../presentation/screens/splash/splash_screen.dart';
+import '../../presentation/screens/stats/stats_screen.dart';
+import '../../presentation/widgets/breath_overlay.dart';
 import '../../presentation/widgets/mini_player.dart';
+import '../../presentation/widgets/pulse_ripple_overlay.dart';
+import '../../presentation/widgets/rain_overlay.dart';
+import '../../presentation/widgets/sakura_overlay.dart';
+import '../../presentation/widgets/star_overlay.dart';
+import '../theme/mood_theme.dart';
 
 /// Named route constants
 class AppRoutes {
@@ -43,30 +56,27 @@ final appRouter = GoRouter(
         GoRoute(path: AppRoutes.library, builder: (context, state) => const LibraryScreen()),
         GoRoute(
           path: AppRoutes.playlists,
-          builder: (context, state) => const _PlaceholderScreen(title: 'Playlists'),
+          builder: (context, state) => const PlaylistsScreen(),
           routes: [
             GoRoute(
               path: 'detail/:id',
+              builder: (context, state) => PlaylistDetailScreen(
+                playlistId: int.tryParse(state.pathParameters['id'] ?? '') ?? 0,
+              ),
+            ),
+            GoRoute(
+              path: 'smart/:type',
               builder: (context, state) =>
-                  _PlaceholderScreen(title: 'Playlist ${state.pathParameters['id']}'),
+                  PlaylistDetailScreen(smartType: state.pathParameters['type']),
             ),
           ],
         ),
-        GoRoute(
-          path: AppRoutes.search,
-          builder: (context, state) => const _PlaceholderScreen(title: 'Search'),
-        ),
+        GoRoute(path: AppRoutes.search, builder: (context, state) => const SearchScreen()),
       ],
     ),
     GoRoute(path: AppRoutes.nowPlaying, builder: (context, state) => const NowPlayingScreen()),
-    GoRoute(
-      path: AppRoutes.focusMode,
-      builder: (context, state) => const _PlaceholderScreen(title: 'Focus Mode'),
-    ),
-    GoRoute(
-      path: AppRoutes.stats,
-      builder: (context, state) => const _PlaceholderScreen(title: 'Stats'),
-    ),
+    GoRoute(path: AppRoutes.focusMode, builder: (context, state) => const FocusModeScreen()),
+    GoRoute(path: AppRoutes.stats, builder: (context, state) => const StatsScreen()),
     GoRoute(
       path: AppRoutes.settings,
       builder: (context, state) => const _PlaceholderScreen(title: 'Settings'),
@@ -75,7 +85,7 @@ final appRouter = GoRouter(
 );
 
 /// Bottom navigation shell — wraps the 4 main tabs
-class _MainShell extends StatelessWidget {
+class _MainShell extends ConsumerWidget {
   final Widget child;
   const _MainShell({required this.child});
 
@@ -94,20 +104,39 @@ class _MainShell extends StatelessWidget {
     return index < 0 ? 0 : index;
   }
 
+  Widget _moodOverlay(MoodType mood, Widget child) {
+    switch (mood) {
+      case MoodType.calm:
+        return SakuraOverlay(child: child);
+      case MoodType.sad:
+        return RainOverlay(child: child);
+      case MoodType.energetic:
+        return PulseRippleOverlay(child: child);
+      case MoodType.night:
+        return StarOverlay(child: child);
+      case MoodType.focus:
+        return BreathOverlay(child: child);
+    }
+  }
+
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final mood = ref.watch(moodProvider);
     return Scaffold(
-      body: Stack(
-        children: [
-          child,
-          // Mini player sits above the bottom nav bar
-          const Positioned(
-            left: 0,
-            right: 0,
-            bottom: AppDimensions.bottomNavHeight,
-            child: MiniPlayer(),
-          ),
-        ],
+      body: _moodOverlay(
+        mood,
+        Stack(
+          children: [
+            child,
+            // Mini player sits above the bottom nav bar
+            const Positioned(
+              left: 0,
+              right: 0,
+              bottom: AppDimensions.bottomNavHeight,
+              child: MiniPlayer(),
+            ),
+          ],
+        ),
       ),
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _selectedIndex(context),
@@ -123,7 +152,7 @@ class _MainShell extends StatelessWidget {
   }
 }
 
-/// Temporary placeholder while feature screens are built in Steps 2–4
+/// Temporary placeholder for Settings (Step 5)
 class _PlaceholderScreen extends StatelessWidget {
   final String title;
   const _PlaceholderScreen({required this.title});

@@ -4,8 +4,9 @@ import 'package:audio_service/audio_service.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../data/datasources/audio/audio_handler.dart';
+import '../../data/repositories_impl/stats_repository_impl.dart';
 import '../../domain/entities/song.dart';
-import '../../main.dart' show audioHandler;
+import '../../main.dart' show audioHandler, objectBox;
 
 // ── Enums ─────────────────────────────────────────────────────────────────────
 
@@ -68,9 +69,13 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
   late final StreamSubscription<bool> _playingSub;
   late final StreamSubscription<PlaybackState> _playbackSub;
 
+  /// Guards against recording the same song multiple times per queue session.
+  final _recordedSongs = <int>{};
+
   PlayerNotifier(this._handler) : super(const PlayerState()) {
     _positionSub = _handler.positionStream.listen((pos) {
       state = state.copyWith(position: pos);
+      _checkListenThreshold(pos);
     });
 
     _playingSub = _handler.playingStream.listen((playing) {
@@ -89,6 +94,19 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
     });
   }
 
+  void _checkListenThreshold(Duration position) {
+    final song = state.currentSong;
+    if (song == null || song.durationMs <= 0) return;
+    if (_recordedSongs.contains(song.id)) return;
+    final pct = position.inMilliseconds / song.durationMs;
+    if (pct >= 0.8) {
+      _recordedSongs.add(song.id);
+      StatsRepositoryImpl(
+        objectBox,
+      ).recordListen(songId: song.id, durationMs: (song.durationMs * 0.8).round());
+    }
+  }
+
   @override
   void dispose() {
     _positionSub.cancel();
@@ -100,6 +118,8 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
   // ── Playback controls ───────────────────────────────────────────────────────
 
   Future<void> play(Song song, {List<Song>? queue, int index = 0}) async {
+    // Clear guard when starting a new queue
+    _recordedSongs.clear();
     final effectiveQueue = queue ?? [song];
     state = state.copyWith(currentSong: song, queue: effectiveQueue, isLoading: true);
     await _handler.playFromSong(song, queue: effectiveQueue, queueIndex: index);

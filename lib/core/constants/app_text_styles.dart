@@ -41,4 +41,11 @@ class AppTextStyles {
     fontWeight: FontWeight.w400,
     color: color ?? AppColorsLight.subtext,
   );
+
+  static TextStyle labelMedium({Color? color}) => GoogleFonts.nunito(
+    fontSize: 13,
+    fontWeight: FontWeight.w600,
+    letterSpacing: 0.5,
+    color: color ?? AppColorsLight.subtext,
+  );
 }

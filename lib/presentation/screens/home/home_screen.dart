@@ -126,7 +126,7 @@ class _MoodChips extends ConsumerWidget {
           final (moodType, label) = _moods[i];
           final isSelected = selected == moodType;
           return GestureDetector(
-            onTap: () => ref.read(moodProvider.notifier).state = moodType,
+            onTap: () => ref.read(moodProvider.notifier).setMood(moodType),
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 600),
               curve: Curves.easeInOut,
