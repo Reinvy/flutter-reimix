@@ -2,6 +2,7 @@ import 'dart:io';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart' hide RepeatMode;
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:palette_generator/palette_generator.dart';
 
@@ -224,18 +225,21 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> with Ticker
 
   Widget _buildArtView(PlayerState playerState, Song song, bool isDark) {
     return Center(
-      child: AnimatedSwitcher(
-        duration: const Duration(milliseconds: 400),
-        transitionBuilder: (child, animation) {
-          return FadeTransition(
-            opacity: animation,
-            child: ScaleTransition(scale: animation, child: child),
-          );
-        },
-        child: RotatingAlbumArt(
-          key: ValueKey(song.id),
-          artPath: song.albumArtPath,
-          rotationController: _rotationController,
+      child: GestureDetector(
+        onLongPress: () => HapticFeedback.mediumImpact(),
+        child: AnimatedSwitcher(
+          duration: const Duration(milliseconds: 400),
+          transitionBuilder: (child, animation) {
+            return FadeTransition(
+              opacity: animation,
+              child: ScaleTransition(scale: animation, child: child),
+            );
+          },
+          child: RotatingAlbumArt(
+            key: ValueKey(song.id),
+            artPath: song.albumArtPath,
+            rotationController: _rotationController,
+          ),
         ),
       ),
     );
@@ -637,18 +641,20 @@ class _VisualizerView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Center(
-      child: AnimatedBuilder(
-        animation: controller,
-        builder: (_, __) {
-          return CustomPaint(
-            size: const Size(double.infinity, 120),
-            painter: _VisualizerPainter(
-              progress: controller.value,
-              isPlaying: isPlaying,
-              color: accentColor,
-            ),
-          );
-        },
+      child: RepaintBoundary(
+        child: AnimatedBuilder(
+          animation: controller,
+          builder: (_, __) {
+            return CustomPaint(
+              size: const Size(double.infinity, 120),
+              painter: _VisualizerPainter(
+                progress: controller.value,
+                isPlaying: isPlaying,
+                color: accentColor,
+              ),
+            );
+          },
+        ),
       ),
     );
   }

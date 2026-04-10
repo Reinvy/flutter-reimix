@@ -25,68 +25,70 @@ class MiniPlayer extends ConsumerWidget {
 
     if (song == null) return const SizedBox.shrink();
 
-    return GestureDetector(
-      onTap: () => context.push(AppRoutes.nowPlaying),
-      onHorizontalDragEnd: (details) {
-        if ((details.primaryVelocity?.abs() ?? 0) > 300) {
-          ref.read(playerProvider.notifier).stop();
-        }
-      },
-      child: Container(
-        height: AppDimensions.miniPlayerHeight,
-        margin: const EdgeInsets.symmetric(
-          horizontal: AppDimensions.sp8,
-          vertical: AppDimensions.sp4,
-        ),
-        child: GlassmorphicCard(
-          borderRadius: AppDimensions.radiusMiniPlayer,
-          padding: const EdgeInsets.symmetric(horizontal: AppDimensions.sp12),
-          child: Row(
-            children: [
-              // Album art
-              _MiniArt(artPath: song.albumArtPath),
-              const SizedBox(width: AppDimensions.sp12),
-              // Title + artist
-              Expanded(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      song.title,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: AppTextStyles.titleMedium(),
-                    ),
-                    Text(
-                      song.artist ?? 'Unknown Artist',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: AppTextStyles.labelSmall(),
-                    ),
-                  ],
+    return RepaintBoundary(
+      child: GestureDetector(
+        onTap: () => context.push(AppRoutes.nowPlaying),
+        onHorizontalDragEnd: (details) {
+          if ((details.primaryVelocity?.abs() ?? 0) > 300) {
+            ref.read(playerProvider.notifier).stop();
+          }
+        },
+        child: Container(
+          height: AppDimensions.miniPlayerHeight,
+          margin: const EdgeInsets.symmetric(
+            horizontal: AppDimensions.sp8,
+            vertical: AppDimensions.sp4,
+          ),
+          child: GlassmorphicCard(
+            borderRadius: AppDimensions.radiusMiniPlayer,
+            padding: const EdgeInsets.symmetric(horizontal: AppDimensions.sp12),
+            child: Row(
+              children: [
+                // Album art
+                _MiniArt(artPath: song.albumArtPath),
+                const SizedBox(width: AppDimensions.sp12),
+                // Title + artist
+                Expanded(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        song.title,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: AppTextStyles.titleMedium(),
+                      ),
+                      Text(
+                        song.artist ?? 'Unknown Artist',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: AppTextStyles.labelSmall(),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-              // Play / pause
-              _PlayPauseButton(
-                isPlaying: playerState.isPlaying,
-                isLoading: playerState.isLoading,
-                onTap: () {
-                  if (playerState.isPlaying) {
-                    ref.read(playerProvider.notifier).pause();
-                  } else {
-                    ref.read(playerProvider.notifier).resume();
-                  }
-                },
-              ),
-              // Skip next
-              IconButton(
-                icon: const Icon(Icons.skip_next_rounded),
-                iconSize: AppDimensions.iconAction,
-                color: AppColorsLight.onPrimary,
-                onPressed: () => ref.read(playerProvider.notifier).skipToNext(),
-              ),
-            ],
+                // Play / pause
+                _PlayPauseButton(
+                  isPlaying: playerState.isPlaying,
+                  isLoading: playerState.isLoading,
+                  onTap: () {
+                    if (playerState.isPlaying) {
+                      ref.read(playerProvider.notifier).pause();
+                    } else {
+                      ref.read(playerProvider.notifier).resume();
+                    }
+                  },
+                ),
+                // Skip next
+                IconButton(
+                  icon: const Icon(Icons.skip_next_rounded),
+                  iconSize: AppDimensions.iconAction,
+                  color: AppColorsLight.onPrimary,
+                  onPressed: () => ref.read(playerProvider.notifier).skipToNext(),
+                ),
+              ],
+            ),
           ),
         ),
       ),

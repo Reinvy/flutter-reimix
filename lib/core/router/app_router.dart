@@ -2,7 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../constants/app_dimensions.dart';
+import '../../core/errors/app_exceptions.dart';
+import '../../main.dart' show libraryWasRebuilt;
 import '../../presentation/providers/mood_provider.dart';
+import '../../presentation/providers/player_provider.dart';
 import '../../presentation/screens/focus_mode/focus_mode_screen.dart';
 import '../../presentation/screens/home/home_screen.dart';
 import '../../presentation/screens/library/library_screen.dart';
@@ -11,6 +14,7 @@ import '../../presentation/screens/onboarding/permission_screen.dart';
 import '../../presentation/screens/playlist/playlist_detail_screen.dart';
 import '../../presentation/screens/playlist/playlists_screen.dart';
 import '../../presentation/screens/search/search_screen.dart';
+import '../../presentation/screens/settings/settings_screen.dart';
 import '../../presentation/screens/splash/splash_screen.dart';
 import '../../presentation/screens/stats/stats_screen.dart';
 import '../../presentation/widgets/breath_overlay.dart';
@@ -39,11 +43,38 @@ class AppRoutes {
   static const String settings = '/settings';
 }
 
+/// Slide-from-right + fade transition used for all full-screen route pushes.
+Page<T> _buildPage<T>(GoRouterState state, Widget child) {
+  return CustomTransitionPage<T>(
+    key: state.pageKey,
+    child: child,
+    transitionDuration: const Duration(milliseconds: 300),
+    transitionsBuilder: (context, animation, secondaryAnimation, child) {
+      return FadeTransition(
+        opacity: CurvedAnimation(parent: animation, curve: Curves.easeInOutCubic),
+        child: SlideTransition(
+          position: Tween<Offset>(
+            begin: const Offset(0.06, 0),
+            end: Offset.zero,
+          ).animate(CurvedAnimation(parent: animation, curve: Curves.easeInOutCubic)),
+          child: child,
+        ),
+      );
+    },
+  );
+}
+
 final appRouter = GoRouter(
   initialLocation: AppRoutes.splash,
   routes: [
-    GoRoute(path: AppRoutes.splash, builder: (context, state) => const SplashScreen()),
-    GoRoute(path: AppRoutes.permission, builder: (context, state) => const PermissionScreen()),
+    GoRoute(
+      path: AppRoutes.splash,
+      pageBuilder: (context, state) => _buildPage(state, const SplashScreen()),
+    ),
+    GoRoute(
+      path: AppRoutes.permission,
+      pageBuilder: (context, state) => _buildPage(state, const PermissionScreen()),
+    ),
     ShellRoute(
       builder: (context, state, child) => _MainShell(child: child),
       routes: [
@@ -74,21 +105,35 @@ final appRouter = GoRouter(
         GoRoute(path: AppRoutes.search, builder: (context, state) => const SearchScreen()),
       ],
     ),
-    GoRoute(path: AppRoutes.nowPlaying, builder: (context, state) => const NowPlayingScreen()),
-    GoRoute(path: AppRoutes.focusMode, builder: (context, state) => const FocusModeScreen()),
-    GoRoute(path: AppRoutes.stats, builder: (context, state) => const StatsScreen()),
+    GoRoute(
+      path: AppRoutes.nowPlaying,
+      pageBuilder: (context, state) => _buildPage(state, const NowPlayingScreen()),
+    ),
+    GoRoute(
+      path: AppRoutes.focusMode,
+      pageBuilder: (context, state) => _buildPage(state, const FocusModeScreen()),
+    ),
+    GoRoute(
+      path: AppRoutes.stats,
+      pageBuilder: (context, state) => _buildPage(state, const StatsScreen()),
+    ),
     GoRoute(
       path: AppRoutes.settings,
-      builder: (context, state) => const _PlaceholderScreen(title: 'Settings'),
+      pageBuilder: (context, state) => _buildPage(state, const SettingsScreen()),
     ),
   ],
 );
 
 /// Bottom navigation shell — wraps the 4 main tabs
-class _MainShell extends ConsumerWidget {
+class _MainShell extends ConsumerStatefulWidget {
   final Widget child;
   const _MainShell({required this.child});
 
+  @override
+  ConsumerState<_MainShell> createState() => _MainShellState();
+}
+
+class _MainShellState extends ConsumerState<_MainShell> {
   static const _tabs = [
     AppRoutes.homeIndex,
     AppRoutes.library,
@@ -120,14 +165,48 @@ class _MainShell extends ConsumerWidget {
   }
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  void initState() {
+    super.initState();
+    if (libraryWasRebuilt) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('\u{1F5C4}\uFE0F Library rebuilt — please rescan your music.'),
+            duration: Duration(seconds: 4),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final mood = ref.watch(moodProvider);
+
+    // Show a snackbar when an audio file cannot be played, then skip to next.
+    ref.listen<AsyncValue<AudioException>>(audioErrorStreamProvider, (_, next) {
+      next.whenData((err) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('File not found \u2014 skipping song.'),
+            backgroundColor: Theme.of(context).colorScheme.error,
+            behavior: SnackBarBehavior.floating,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+        ref.read(playerProvider.notifier).skipToNext();
+      });
+    });
+
     return Scaffold(
       body: _moodOverlay(
         mood,
         Stack(
           children: [
-            child,
+            widget.child,
             // Mini player sits above the bottom nav bar
             const Positioned(
               left: 0,
@@ -148,20 +227,6 @@ class _MainShell extends ConsumerWidget {
           BottomNavigationBarItem(icon: Icon(Icons.search), label: 'Search'),
         ],
       ),
-    );
-  }
-}
-
-/// Temporary placeholder for Settings (Step 5)
-class _PlaceholderScreen extends StatelessWidget {
-  final String title;
-  const _PlaceholderScreen({required this.title});
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: Text(title)),
-      body: Center(child: Text(title, style: Theme.of(context).textTheme.headlineMedium)),
     );
   }
 }

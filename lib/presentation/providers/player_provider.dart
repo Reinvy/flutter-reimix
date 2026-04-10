@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:audio_service/audio_service.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/errors/app_exceptions.dart';
 import '../../data/datasources/audio/audio_handler.dart';
 import '../../data/repositories_impl/stats_repository_impl.dart';
 import '../../domain/entities/song.dart';
@@ -179,4 +180,10 @@ final audioHandlerProvider = Provider<ReimixAudioHandler>((_) => audioHandler);
 
 final playerProvider = StateNotifierProvider<PlayerNotifier, PlayerState>((ref) {
   return PlayerNotifier(ref.read(audioHandlerProvider));
+});
+
+/// Stream of audio playback errors from [ReimixAudioHandler].
+/// Consumed by the shell to show snackbars and skip broken tracks.
+final audioErrorStreamProvider = StreamProvider<AudioException>((ref) {
+  return ref.read(audioHandlerProvider).audioErrors;
 });

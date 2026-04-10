@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_dimensions.dart';
+import '../../core/constants/app_strings.dart';
 import '../../core/constants/app_text_styles.dart';
 import '../../domain/entities/song.dart';
 
@@ -251,11 +252,7 @@ class _SongContextMenu extends StatelessWidget {
             label: 'Play Next',
             onTap: () => Navigator.pop(context),
           ),
-          _ContextMenuItem(
-            icon: Icons.playlist_add_rounded,
-            label: 'Add to Playlist',
-            onTap: () => Navigator.pop(context),
-          ),
+          const _AddToPlaylistItem(),
           _ContextMenuItem(
             icon: song.isFavorite ? Icons.favorite_rounded : Icons.favorite_border_rounded,
             label: song.isFavorite ? 'Remove from Favorites' : 'Add to Favorites',
@@ -295,6 +292,44 @@ class _ContextMenuItem extends StatelessWidget {
       leading: Icon(icon, color: AppColorsLight.accent),
       title: Text(label, style: AppTextStyles.titleMedium()),
       onTap: onTap,
+    );
+  }
+}
+
+// ── Add to Playlist context item with checkmark animation ─────────────────────
+
+class _AddToPlaylistItem extends StatefulWidget {
+  const _AddToPlaylistItem();
+
+  @override
+  State<_AddToPlaylistItem> createState() => _AddToPlaylistItemState();
+}
+
+class _AddToPlaylistItemState extends State<_AddToPlaylistItem> {
+  bool _checked = false;
+
+  void _onTap() async {
+    setState(() => _checked = true);
+    await Future.delayed(const Duration(milliseconds: 700));
+    if (!mounted) return;
+    // ignore: use_build_context_synchronously
+    Navigator.pop(context);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return ListTile(
+      leading: AnimatedSwitcher(
+        duration: const Duration(milliseconds: 200),
+        transitionBuilder: (child, animation) => ScaleTransition(scale: animation, child: child),
+        child: Icon(
+          _checked ? Icons.check_circle_rounded : Icons.playlist_add_rounded,
+          key: ValueKey(_checked),
+          color: _checked ? Colors.green : AppColorsLight.accent,
+        ),
+      ),
+      title: Text(AppStrings.addToPlaylist, style: AppTextStyles.titleMedium()),
+      onTap: _onTap,
     );
   }
 }

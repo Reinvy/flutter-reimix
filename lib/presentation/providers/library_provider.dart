@@ -34,10 +34,17 @@ class LibraryNotifier extends AsyncNotifier<List<Song>> {
   Future<void> scan() async {
     state = const AsyncLoading();
     state = await AsyncValue.guard(() => ref.read(songRepositoryProvider).scanAndSave());
+    if (state is AsyncData) {
+      ref.read(scanCompleteCountProvider.notifier).state++;
+    }
   }
 }
 
 final libraryProvider = AsyncNotifierProvider<LibraryNotifier, List<Song>>(LibraryNotifier.new);
+
+/// Incremented each time a library scan completes successfully.
+/// Listen to this in UI widgets to show a "scan complete" notification.
+final scanCompleteCountProvider = StateProvider<int>((_) => 0);
 
 // ── Derived providers ─────────────────────────────────────────────────────────
 

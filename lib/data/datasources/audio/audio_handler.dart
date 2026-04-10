@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:audio_service/audio_service.dart';
 import 'package:just_audio/just_audio.dart';
 
+import '../../../core/errors/app_exceptions.dart';
 import '../../../domain/entities/song.dart';
 
 /// Background-capable audio handler.
@@ -12,6 +13,7 @@ import '../../../domain/entities/song.dart';
 /// and playing-state streams, and keeps the OS media session in sync.
 class ReimixAudioHandler extends BaseAudioHandler with SeekHandler {
   final _player = AudioPlayer();
+  final _errorController = StreamController<AudioException>.broadcast();
 
   List<Song> _queue = [];
   int _currentIndex = 0;
@@ -21,7 +23,9 @@ class ReimixAudioHandler extends BaseAudioHandler with SeekHandler {
     _player.playbackEventStream.listen(
       _broadcastState,
       onError: (Object e, StackTrace st) {
-        // Swallow playback errors so the handler keeps running
+        _errorController.add(
+          AudioException('Playback error — file may be missing or corrupt.', cause: e),
+        );
       },
     );
 
@@ -70,8 +74,17 @@ class ReimixAudioHandler extends BaseAudioHandler with SeekHandler {
     _queue = queue ?? [song];
     _currentIndex = queueIndex;
     mediaItem.add(song.toMediaItem());
-    await _player.setAudioSource(AudioSource.uri(Uri.parse(song.filePath)));
-    await _player.play();
+    try {
+      await _player.setAudioSource(AudioSource.uri(Uri.parse(song.filePath)));
+      await _player.play();
+    } catch (e) {
+      _errorController.add(
+        AudioException(
+          'Cannot play "${song.title}" — file may have been moved or deleted.',
+          cause: e,
+        ),
+      );
+    }
   }
 
   // ── BaseAudioHandler overrides ───────────────────────────────────────────────
@@ -152,6 +165,9 @@ class ReimixAudioHandler extends BaseAudioHandler with SeekHandler {
   Stream<bool> get playingStream => _player.playingStream;
 
   Stream<Duration?> get durationStream => _player.durationStream;
+
+  /// Stream of audio errors (file not found, codec failures, etc.)
+  Stream<AudioException> get audioErrors => _errorController.stream;
 }
 
 // ── Extension ─────────────────────────────────────────────────────────────────

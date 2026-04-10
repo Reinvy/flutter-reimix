@@ -47,21 +47,25 @@ class _SongsTabState extends ConsumerState<SongsTab> {
     final accentColor = Theme.of(context).colorScheme.tertiary;
     final subtextColor = isDark ? AppColorsDark.subtext : AppColorsLight.subtext;
 
+    // Show a petal-burst snackbar each time the library finishes scanning.
+    ref.listen<int>(scanCompleteCountProvider, (prev, next) {
+      if (next > (prev ?? 0)) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Row(children: [Text('🌸 Library scanned!')]),
+            behavior: SnackBarBehavior.floating,
+            duration: Duration(seconds: 3),
+          ),
+        );
+      }
+    });
+
     return asyncSongs.when(
       loading: () => _ShimmerList(),
       error: (e, _) => Center(child: Text('Error: $e', style: AppTextStyles.bodyMedium())),
       data: (songs) {
         if (songs.isEmpty) {
-          return Center(
-            child: Padding(
-              padding: const EdgeInsets.all(AppDimensions.sp32),
-              child: Text(
-                AppStrings.noMusicFound,
-                textAlign: TextAlign.center,
-                style: AppTextStyles.bodyMedium(),
-              ),
-            ),
-          );
+          return _AnimatedEmptyState(onScan: () => ref.read(libraryProvider.notifier).scan());
         }
         final sorted = _sorted(songs);
         return Column(
@@ -228,6 +232,70 @@ class _SortSheet extends StatelessWidget {
             ),
           const SizedBox(height: AppDimensions.sp16),
         ],
+      ),
+    );
+  }
+}
+
+// ── Animated empty state ──────────────────────────────────────────────────────
+
+class _AnimatedEmptyState extends StatefulWidget {
+  final VoidCallback onScan;
+  const _AnimatedEmptyState({required this.onScan});
+
+  @override
+  State<_AnimatedEmptyState> createState() => _AnimatedEmptyStateState();
+}
+
+class _AnimatedEmptyStateState extends State<_AnimatedEmptyState>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _ctrl;
+  late final Animation<double> _scale;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 1500))
+      ..repeat(reverse: true);
+    _scale = Tween<double>(
+      begin: 0.88,
+      end: 1.12,
+    ).animate(CurvedAnimation(parent: _ctrl, curve: Curves.easeInOut));
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final accentColor = Theme.of(context).colorScheme.tertiary;
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(AppDimensions.sp32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ScaleTransition(
+              scale: _scale,
+              child: Icon(Icons.library_music_rounded, size: 80, color: accentColor.withAlpha(180)),
+            ),
+            const SizedBox(height: AppDimensions.sp24),
+            Text(
+              AppStrings.noMusicFound,
+              textAlign: TextAlign.center,
+              style: AppTextStyles.bodyMedium(),
+            ),
+            const SizedBox(height: AppDimensions.sp24),
+            ElevatedButton.icon(
+              onPressed: widget.onScan,
+              icon: const Icon(Icons.refresh_rounded),
+              label: const Text('Scan Now'),
+            ),
+          ],
+        ),
       ),
     );
   }
