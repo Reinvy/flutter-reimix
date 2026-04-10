@@ -855,22 +855,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "2.1.0"
-  on_audio_query:
-    dependency: "direct main"
-    description:
-      name: on_audio_query
-      sha256: "28d7a247f8a0580b5d1befba15c8d8fd7e1cf3cd8e0449d54a66fc2ef27adf10"
-      url: "https://pub.dev"
-    source: hosted
-    version: "2.9.0"
-  on_audio_query_android:
-    dependency: transitive
-    description:
-      name: on_audio_query_android
-      sha256: c0b946011ee7aa8ec76b21837f0cb0007120ac291202ed6c6fb4c498ba2ff6fe
-      url: "https://pub.dev"
-    source: hosted
-    version: "1.1.0"
   on_audio_query_ios:
     dependency: transitive
     description:
@@ -887,6 +871,22 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.7.0"
+  on_audio_query_plus_android:
+    dependency: transitive
+    description:
+      name: on_audio_query_plus_android
+      sha256: "30ff80db9d8cbd5c3b4869bc36ff2e60ce2724d4ee19a90fa7e47ade2ab34224"
+      url: "https://pub.dev"
+    source: hosted
+    version: "1.2.2"
+  on_audio_query_pluse:
+    dependency: "direct main"
+    description:
+      name: on_audio_query_pluse
+      sha256: b2934b917d7bc5356ffb08abd12e9216a041ff74fbe381a1ca7dbf56bfd7ea7f
+      url: "https://pub.dev"
+    source: hosted
+    version: "2.9.9"
   on_audio_query_web:
     dependency: transitive
     description:
@@ -1155,18 +1155,18 @@ packages:
     dependency: "direct main"
     description:
       name: share_plus
-      sha256: ef3489a969683c4f3d0239010cc8b7a2a46543a8d139e111c06c558875083544
+      sha256: "223873d106614442ea6f20db5a038685cc5b32a2fba81cdecaefbbae0523f7fa"
       url: "https://pub.dev"
     source: hosted
-    version: "9.0.0"
+    version: "12.0.2"
   share_plus_platform_interface:
     dependency: transitive
     description:
       name: share_plus_platform_interface
-      sha256: "0f9e4418835d1b2c3ae78fdb918251959106cefdbc4dd43526e182f80e82f6d4"
+      sha256: "88023e53a13429bd65d8e85e11a9b484f49d4c190abbd96c7932b74d6927cc9a"
       url: "https://pub.dev"
     source: hosted
-    version: "4.0.0"
+    version: "6.1.0"
   shared_preferences:
     dependency: "direct main"
     description:
@@ -1520,10 +1520,10 @@ packages:
     dependency: transitive
     description:
       name: web
-      sha256: "97da13628db363c635202ad97068d47c5b8aa555808e7a9411963c533b449b27"
+      sha256: "868d88a33d8a87b18ffc05f9f030ba328ffefba92d6c127917a2ba740f9cfe4a"
       url: "https://pub.dev"
     source: hosted
-    version: "0.5.1"
+    version: "1.1.1"
   web_socket:
     dependency: transitive
     description:

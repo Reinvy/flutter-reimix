@@ -1,4 +1,4 @@
-import 'package:on_audio_query/on_audio_query.dart' hide SongModel;
+import 'package:on_audio_query_pluse/on_audio_query.dart' hide SongModel;
 
 import '../../models/song_model.dart';
 import 'objectbox_datasource.dart';
