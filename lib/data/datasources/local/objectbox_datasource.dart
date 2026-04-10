@@ -26,7 +26,7 @@ class ObjectBoxDatasource {
 
   /// Returns the singleton AppSettings row, creating defaults if absent.
   AppSettings getSettings() {
-    final existing = settingsBox.get(1);
+    final existing = settingsBox.getAll().firstOrNull;
     if (existing != null) return existing;
     final defaults = AppSettings();
     settingsBox.put(defaults);

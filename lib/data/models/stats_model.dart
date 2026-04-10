@@ -1,10 +1,10 @@
 import 'package:objectbox/objectbox.dart';
 
-/// Singleton settings entity (always id = 1)
+/// Singleton settings entity
 @Entity()
 class AppSettings {
   @Id()
-  int id = 1;
+  int id = 0;
 
   /// 'light' | 'dark' | 'system'
   String themeMode = 'system';
