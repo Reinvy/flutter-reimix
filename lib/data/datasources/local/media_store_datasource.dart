@@ -1,58 +1,101 @@
-import 'package:on_audio_query/on_audio_query.dart' hide SongModel;
+import 'dart:io';
+
+import 'package:audio_metadata_reader/audio_metadata_reader.dart';
+import 'package:flutter/services.dart';
 
 import '../../models/song_model.dart';
 import 'objectbox_datasource.dart';
 
-/// Wraps [OnAudioQuery] to scan device MediaStore and persist results.
+/// Queries device audio files via platform MethodChannels and persists results.
 ///
-/// Pagination is handled by [OnAudioQuery] internally; the datasource
-/// fetches all songs in a single call and deduplicates by [filePath]
-/// before writing to ObjectBox.
+/// - Android: Kotlin reads `MediaStore.Audio.Media` (API 16+).
+/// - iOS: Swift reads `MPMediaQuery.songs()`.
+///
+/// On Android, if MediaStore does not provide a genre (API < 30),
+/// `audio_metadata_reader` is used as a fallback to read it from the file tags.
+///
+/// Pagination is not needed — the platform side returns all results at once.
+/// `_mergeIntoDatabase` deduplicates by [filePath] before persisting.
 class MediaStoreDatasource {
   final ObjectBoxDatasource _db;
-  final OnAudioQuery _audioQuery = OnAudioQuery();
+  static const _channel = MethodChannel('reimix/media_store');
 
-  static const _supportedFormats = {'mp3', 'flac', 'aac', 'm4a', 'ogg', 'wav'};
+  static const _supportedMimeTypes = {
+    'audio/mpeg',
+    'audio/flac',
+    'audio/aac',
+    'audio/mp4',
+    'audio/ogg',
+    'audio/x-wav',
+    'audio/wav',
+  };
+  static const _supportedExtensions = {'mp3', 'flac', 'aac', 'm4a', 'ogg', 'wav'};
 
   MediaStoreDatasource(this._db);
 
-  /// Queries all audio files, filters to [_supportedFormats], merges with
-  /// existing database records (preserving isFavorite, playCount, etc.),
-  /// and returns the complete persisted list.
+  /// Queries all audio files from the platform, filters to supported formats,
+  /// merges with existing database records (preserving isFavorite, playCount,
+  /// etc.), and returns the complete persisted list.
   Future<List<SongModel>> scanAndSave() async {
-    final rawSongs = await _audioQuery.querySongs(
-      sortType: SongSortType.TITLE,
-      orderType: OrderType.ASC_OR_SMALLER,
-      uriType: UriType.EXTERNAL,
-      ignoreCase: true,
-    );
-
-    final filtered = rawSongs.where((s) {
-      final ext = s.fileExtension.toLowerCase();
-      return _supportedFormats.contains(ext);
-    });
+    final rawList = await _channel.invokeListMethod<Object>('querySongs') ?? [];
 
     final now = DateTime.now();
-    final incoming = filtered.map((s) {
+    final incoming = <SongModel>[];
+
+    for (final item in rawList) {
+      if (item is! Map) continue;
+      final song = Map<String, dynamic>.from(item);
+
+      final filePath = song['filePath'] as String?;
+      if (filePath == null || filePath.isEmpty) continue;
+
+      // Filter by MIME type or file extension
+      final mimeType = song['mimeType'] as String?;
+      final ext = filePath.contains('.') ? filePath.split('.').last.toLowerCase() : '';
+      final isMimeAllowed = mimeType != null && _supportedMimeTypes.contains(mimeType);
+      final isExtAllowed = _supportedExtensions.contains(ext);
+      if (!isMimeAllowed && !isExtAllowed) continue;
+
+      // Genre: use platform-provided value first; fallback to audio_metadata_reader on Android
+      String? genre = song['genre'] as String?;
+      if (Platform.isAndroid && (genre == null || genre.isEmpty)) {
+        genre = await _readGenreFromFile(filePath);
+      }
+
       final model = SongModel()
-        ..filePath = s.data
-        ..title = s.title
-        ..artist = s.artist
-        ..album = s.album
-        ..genre = s.genre
-        ..year = s.getMap['year'] as int?
-        ..trackNumber = s.track
-        ..durationMs = s.duration ?? 0
+        ..filePath = filePath
+        ..title = song['title'] as String? ?? filePath.split('/').last
+        ..artist = song['artist'] as String?
+        ..album = song['album'] as String?
+        ..genre = genre
+        ..year = song['year'] as int?
+        ..trackNumber = song['track'] as int?
+        ..durationMs = (song['duration'] as int?) ?? 0
         ..albumArtPath = null
         ..isFavorite = false
         ..playCount = 0
         ..totalListenedMs = 0
         ..dateAdded = now;
-      return model;
-    }).toList();
+      incoming.add(model);
+    }
 
     _mergeIntoDatabase(incoming);
     return _db.songBox.getAll();
+  }
+
+  /// Reads the genre string from file ID3/Vorbis tags.
+  /// Returns `null` on any error (e.g. file missing, unsupported codec).
+  Future<String?> _readGenreFromFile(String filePath) async {
+    try {
+      final file = File(filePath);
+      if (!file.existsSync()) return null;
+      final metadata = readMetadata(file, getImage: false);
+      final genres = metadata.genres;
+      if (genres.isNotEmpty) return genres.first;
+    } catch (_) {
+      // Ignore — genre is optional
+    }
+    return null;
   }
 
   /// Inserts only songs whose [filePath] is not yet stored, keeping existing
