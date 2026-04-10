@@ -1,0 +1,13 @@
+Place the following files here before running `flutter pub run flutter_launcher_icons`:
+
+- app_icon.png           — 1024×1024 PNG, cherry blossom app icon (used for iOS + Android fallback)
+- app_icon_foreground.png — 1024×1024 PNG, adaptive icon foreground layer (Android 8+)
+- app_icon_splash.png    — 512×512 PNG, centred for splash screen background (#FFF0F5)
+
+Colors:
+  Background (adaptive + splash): #FFF0F5 (lavender blush)
+  Adaptive icon background:       #FFB7C5 (cherry blossom pink)
+
+After placing the files, run:
+  flutter pub run flutter_launcher_icons
+  flutter pub run flutter_native_splash:create

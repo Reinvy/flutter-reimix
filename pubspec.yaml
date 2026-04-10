@@ -77,11 +77,17 @@ dependencies:
 dev_dependencies:
   flutter_test:
     sdk: flutter
+  integration_test:
+    sdk: flutter
 
   flutter_lints: ^4.0.0
   build_runner: ^2.4.9
   objectbox_generator: ^4.0.0
   riverpod_generator: ^2.4.0
+  mocktail: ^1.0.4
+  rxdart: ^0.27.7
+  flutter_launcher_icons: ^0.13.1
+  flutter_native_splash: ^2.4.0
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
@@ -96,7 +102,7 @@ flutter:
   assets:
     - assets/lottie/
     - assets/svg/
-  #   - images/a_dot_ham.jpeg
+    - assets/icons/
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/assets-and-images/#resolution-aware
@@ -123,3 +129,22 @@ flutter:
   #
   # For details regarding fonts from package dependencies,
   # see https://flutter.dev/custom-fonts/#from-packages
+
+flutter_icons:
+  android: "launcher_icon"
+  ios: true
+  image_path: "assets/icons/app_icon.png"
+  adaptive_icon_background: "#FFB7C5"
+  adaptive_icon_foreground: "assets/icons/app_icon_foreground.png"
+  min_sdk_android: 21
+  remove_alpha_ios: true
+
+flutter_native_splash:
+  color: "#FFF0F5"
+  image: assets/icons/app_icon_splash.png
+  android_12:
+    color: "#FFF0F5"
+    image: assets/icons/app_icon_splash.png
+  fullscreen: true
+  android: true
+  ios: true

@@ -10,6 +10,9 @@ import '../../main.dart' show objectBox;
 class MoodNotifier extends StateNotifier<MoodType> {
   MoodNotifier() : super(_loadInitial());
 
+  /// Named constructor used in tests to bypass ObjectBox initialisation.
+  MoodNotifier.withInitialState(super.initial);
+
   static MoodType _loadInitial() {
     final settings = objectBox.getSettings();
     return _fromString(settings.activeMood);
@@ -24,6 +27,11 @@ class MoodNotifier extends StateNotifier<MoodType> {
     final settings = objectBox.getSettings();
     settings.activeMood = mood.name;
     objectBox.settingsBox.put(settings);
+  }
+
+  /// Sets the mood without persisting to ObjectBox. Used in tests.
+  void setMoodWithoutPersistence(MoodType mood) {
+    state = mood;
   }
 }
 
