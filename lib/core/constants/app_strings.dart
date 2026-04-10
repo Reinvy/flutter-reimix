@@ -8,13 +8,22 @@ class AppStrings {
   // Onboarding / Permission
   static const String permissionTitle = "Let's find your music";
   static const String permissionSubtext =
-      'Reimix needs access to your audio files to build your library.';
+      'Reimix needs access to your audio files, media library, and notifications. '
+      'All permissions are required to use the app.';
   static const String grantAccess = 'Grant Access';
   static const String openSettings = 'Open Settings';
-  static const String permissionDeniedTitle = 'Permission Required';
+  static const String permissionDeniedTitle = 'Permissions Required';
   static const String permissionDeniedBody =
-      'Storage permission is needed to read your audio files. '
-      'Please grant it in Settings.';
+      'All permissions are required to use Reimix. '
+      'Please enable them in Settings to continue.';
+  static const String permissionRetryTitle = 'Permissions Not Granted';
+  static const String permissionRetryBody =
+      'Audio, media, and notification access are all required. '
+      'Please grant all permissions to continue.';
+  static const String permissionNotifRequiredTitle = 'Notification Required';
+  static const String permissionNotifRequiredBody =
+      'Reimix needs notification permission to alert you when the sleep timer ends. '
+      'Please enable it in Settings to use this feature.';
 
   // Home
   static const String goodMorning = 'Good morning ☀️';

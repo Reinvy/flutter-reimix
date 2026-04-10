@@ -11,6 +11,7 @@ import 'package:wakelock_plus/wakelock_plus.dart';
 
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_dimensions.dart';
+import '../../../core/constants/app_strings.dart';
 import '../../../core/constants/app_text_styles.dart';
 import '../../providers/player_provider.dart';
 
@@ -39,12 +40,6 @@ Future<void> _initNotifications() async {
 }
 
 Future<void> _showSleepTimerEndedNotification() async {
-  // Silently skip if notification permission was denied
-  if (Platform.isAndroid) {
-    final status = await Permission.notification.status;
-    if (!status.isGranted) return;
-  }
-
   const androidDetails = AndroidNotificationDetails(
     'reimix_sleep_timer',
     'Sleep Timer',
@@ -161,7 +156,40 @@ class _FocusModeScreenState extends ConsumerState<FocusModeScreen> with TickerPr
 
   // ── Sleep timer sheet ──────────────────────────────────────────────────────
 
-  void _showSleepTimerSheet() {
+  Future<void> _showSleepTimerSheet() async {
+    // Notification permission is required for sleep timer alerts
+    var notifStatus = await Permission.notification.status;
+    if (!notifStatus.isGranted) {
+      notifStatus = await Permission.notification.request();
+    }
+
+    if (!mounted) return;
+
+    if (!notifStatus.isGranted) {
+      // Mandatory: user must enable notification permission to use sleep timer
+      await showDialog<void>(
+        context: context,
+        barrierDismissible: false,
+        builder: (ctx) => PopScope(
+          canPop: false,
+          child: AlertDialog(
+            title: const Text(AppStrings.permissionNotifRequiredTitle),
+            content: const Text(AppStrings.permissionNotifRequiredBody),
+            actions: [
+              TextButton(
+                onPressed: () {
+                  Navigator.of(ctx).pop();
+                  openAppSettings();
+                },
+                child: const Text(AppStrings.openSettings),
+              ),
+            ],
+          ),
+        ),
+      );
+      return;
+    }
+
     showModalBottomSheet<void>(
       context: context,
       backgroundColor: Colors.transparent,

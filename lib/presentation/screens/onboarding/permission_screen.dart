@@ -46,23 +46,37 @@ class _PermissionScreenState extends ConsumerState<PermissionScreen>
   Future<void> _requestPermission() async {
     setState(() => _isRequesting = true);
 
-    // API 33+: READ_MEDIA_AUDIO; older: READ_EXTERNAL_STORAGE
+    // Request all required permissions
     final audioStatus = await Permission.audio.request();
 
-    // API 33+: READ_MEDIA_IMAGES for album art (non-critical; audio gates the flow)
+    // READ_MEDIA_IMAGES for album art (Android only)
+    PermissionStatus photosStatus = PermissionStatus.granted;
     if (Platform.isAndroid) {
-      await Permission.photos.request();
+      photosStatus = await Permission.photos.request();
     }
+
+    // POST_NOTIFICATIONS for sleep timer (Android 13+ / iOS)
+    final notifStatus = await Permission.notification.request();
 
     if (!mounted) return;
 
-    if (audioStatus.isGranted) {
+    final allGranted = audioStatus.isGranted && photosStatus.isGranted && notifStatus.isGranted;
+
+    if (allGranted) {
       await _onPermissionGranted();
-    } else if (audioStatus.isPermanentlyDenied) {
-      setState(() => _isRequesting = false);
+      return;
+    }
+
+    setState(() => _isRequesting = false);
+
+    final anyPermanentlyDenied =
+        audioStatus.isPermanentlyDenied ||
+        photosStatus.isPermanentlyDenied ||
+        notifStatus.isPermanentlyDenied;
+
+    if (anyPermanentlyDenied) {
       _showSettingsDialog();
     } else {
-      setState(() => _isRequesting = false);
       _showRationaleDialog();
     }
   }
@@ -81,22 +95,22 @@ class _PermissionScreenState extends ConsumerState<PermissionScreen>
   void _showSettingsDialog() {
     showDialog<void>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text(AppStrings.permissionDeniedTitle),
-        content: const Text(AppStrings.permissionDeniedBody),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(),
-            child: const Text(AppStrings.cancel),
-          ),
-          TextButton(
-            onPressed: () {
-              Navigator.of(ctx).pop();
-              openAppSettings();
-            },
-            child: const Text(AppStrings.openSettings),
-          ),
-        ],
+      barrierDismissible: false,
+      builder: (ctx) => PopScope(
+        canPop: false,
+        child: AlertDialog(
+          title: const Text(AppStrings.permissionDeniedTitle),
+          content: const Text(AppStrings.permissionDeniedBody),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(ctx).pop();
+                openAppSettings();
+              },
+              child: const Text(AppStrings.openSettings),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -104,28 +118,22 @@ class _PermissionScreenState extends ConsumerState<PermissionScreen>
   void _showRationaleDialog() {
     showDialog<void>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text(AppStrings.permissionDeniedTitle),
-        content: const Text(AppStrings.permissionDeniedBody),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(),
-            child: const Text(AppStrings.cancel),
-          ),
-          TextButton(
-            onPressed: () async {
-              Navigator.of(ctx).pop();
-              final retryStatus = await Permission.audio.request();
-              if (!mounted) return;
-              if (retryStatus.isGranted) {
-                await _onPermissionGranted();
-              } else if (retryStatus.isPermanentlyDenied) {
-                _showSettingsDialog();
-              }
-            },
-            child: const Text(AppStrings.grantAccess),
-          ),
-        ],
+      barrierDismissible: false,
+      builder: (ctx) => PopScope(
+        canPop: false,
+        child: AlertDialog(
+          title: const Text(AppStrings.permissionRetryTitle),
+          content: const Text(AppStrings.permissionRetryBody),
+          actions: [
+            TextButton(
+              onPressed: () async {
+                Navigator.of(ctx).pop();
+                await _requestPermission();
+              },
+              child: const Text(AppStrings.grantAccess),
+            ),
+          ],
+        ),
       ),
     );
   }
