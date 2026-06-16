@@ -2,20 +2,28 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
+import 'package:rxdart/rxdart.dart';
+import 'package:audio_service/audio_service.dart';
 
 import 'package:reimix/core/constants/app_strings.dart';
 import 'package:reimix/core/theme/mood_theme.dart';
 import 'package:reimix/data/models/stats_model.dart';
 import 'package:reimix/presentation/providers/mood_provider.dart';
+import 'package:reimix/presentation/providers/player_provider.dart';
 import 'package:reimix/presentation/screens/home/home_screen.dart';
 import 'package:reimix/main.dart' as app;
 
 import '../helpers/mock_repositories.dart';
 
+late MockReimixAudioHandler mockHandler;
+
 /// Wraps [HomeScreen] with the providers it needs (no router navigation required).
 Widget _wrapHome({MoodType initialMood = MoodType.calm}) {
   return ProviderScope(
-    overrides: [moodProvider.overrideWith((ref) => MoodNotifier.withInitialState(initialMood))],
+    overrides: [
+      moodProvider.overrideWith((ref) => MoodNotifier.withInitialState(initialMood)),
+      audioHandlerProvider.overrideWithValue(mockHandler),
+    ],
     child: const MaterialApp(home: HomeScreen()),
   );
 }
@@ -31,11 +39,17 @@ void main() {
   setUp(() {
     mockSettingsBox = MockAppSettingsBox();
     mockDb = MockObjectBoxDatasource();
+    mockHandler = MockReimixAudioHandler();
 
     final settings = AppSettings();
     when(() => mockDb.getSettings()).thenReturn(settings);
     when(() => mockDb.settingsBox).thenReturn(mockSettingsBox);
     when(() => mockSettingsBox.put(any())).thenReturn(1);
+
+    final playbackSubject = BehaviorSubject<PlaybackState>.seeded(PlaybackState());
+    when(() => mockHandler.positionStream).thenAnswer((_) => const Stream.empty());
+    when(() => mockHandler.playingStream).thenAnswer((_) => const Stream.empty());
+    when(() => mockHandler.playbackState).thenAnswer((_) => playbackSubject);
 
     // Inject into the global so MoodNotifier.setMood doesn't throw.
     app.objectBox = mockDb;
@@ -59,6 +73,7 @@ void main() {
       final container = ProviderContainer(
         overrides: [
           moodProvider.overrideWith((ref) => MoodNotifier.withInitialState(MoodType.calm)),
+          audioHandlerProvider.overrideWithValue(mockHandler),
         ],
       );
       addTearDown(container.dispose);
@@ -72,6 +87,7 @@ void main() {
       await tester.pump();
 
       // Tap the sad chip
+      await tester.ensureVisible(find.text(AppStrings.moodSad));
       await tester.tap(find.text(AppStrings.moodSad));
       await tester.pump();
 
@@ -82,6 +98,7 @@ void main() {
       final container = ProviderContainer(
         overrides: [
           moodProvider.overrideWith((ref) => MoodNotifier.withInitialState(MoodType.calm)),
+          audioHandlerProvider.overrideWithValue(mockHandler),
         ],
       );
       addTearDown(container.dispose);
@@ -94,6 +111,7 @@ void main() {
       );
       await tester.pump();
 
+      await tester.ensureVisible(find.text(AppStrings.moodFocus));
       await tester.tap(find.text(AppStrings.moodFocus));
       await tester.pump();
 
