@@ -43,44 +43,6 @@ class HomeScreen extends ConsumerWidget {
 
     // Retrieve active and recently played songs to determine spotlight
     final playerState = ref.watch(playerProvider);
-    final recentlyPlayedAsync = ref.watch(recentlyPlayedProvider);
-
-    Widget spotlightWidget;
-    if (playerState.currentSong != null) {
-      spotlightWidget = _SpotlightCard(
-        song: playerState.currentSong!,
-        isPlaying: playerState.isPlaying,
-        accentColor: moodAccent,
-      );
-    } else {
-      final recents = recentlyPlayedAsync.valueOrNull ?? [];
-      if (recents.isNotEmpty) {
-        spotlightWidget = _SpotlightCard(
-          song: recents.first,
-          isPlaying: false,
-          accentColor: moodAccent,
-        );
-      } else {
-        spotlightWidget = _WelcomeSpotlightCard(
-          accentColor: moodAccent,
-          onShufflePlay: () {
-            final librarySongs = ref.read(libraryProvider).valueOrNull ?? [];
-            if (librarySongs.isNotEmpty) {
-              final shuffled = List<Song>.from(librarySongs)..shuffle();
-              ref.read(playerProvider.notifier).play(
-                shuffled.first,
-                queue: shuffled,
-                index: 0,
-              );
-            } else {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('No local songs available to play.')),
-              );
-            }
-          },
-        );
-      }
-    }
 
     return Scaffold(
       backgroundColor: bgColor,
@@ -89,10 +51,7 @@ class HomeScreen extends ConsumerWidget {
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [
-              moodBg.withAlpha(200),
-              bgColor,
-            ],
+            colors: [moodBg.withAlpha(200), bgColor],
             stops: const [0.0, 0.6],
           ),
         ),
@@ -160,9 +119,10 @@ class HomeScreen extends ConsumerWidget {
 
               // ── Spotlight Hero Card ─────────────────────────────────────────
               SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.only(bottom: AppDimensions.sp24),
-                  child: spotlightWidget,
+                child: _AnimatedSpotlight(
+                  song: playerState.currentSong,
+                  isPlaying: playerState.isPlaying,
+                  accentColor: moodAccent,
                 ),
               ),
 
@@ -314,29 +274,20 @@ class _MoodCard extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              FaIcon(
-                icon,
-                color: isSelected ? Colors.white : accentColor,
-                size: 20,
-              ),
+              FaIcon(icon, color: isSelected ? Colors.white : accentColor, size: 20),
               const SizedBox(height: 8),
               Text(
                 label,
                 style: AppTextStyles.titleMedium(
                   color: isSelected ? Colors.white : textColor,
-                ).copyWith(
-                  fontWeight: FontWeight.w700,
-                  fontSize: 14,
-                ),
+                ).copyWith(fontWeight: FontWeight.w700, fontSize: 14),
               ),
               const SizedBox(height: 2),
               Text(
                 subtitle,
                 style: AppTextStyles.bodyMedium(
                   color: isSelected ? Colors.white.withAlpha(200) : textColor.withAlpha(150),
-                ).copyWith(
-                  fontSize: 10,
-                ),
+                ).copyWith(fontSize: 10),
               ),
             ],
           ),
@@ -352,7 +303,7 @@ class _SectionHeader extends ConsumerWidget {
   final String title;
   final VoidCallback? onSeeAll;
 
-  const _SectionHeader({super.key, required this.title, this.onSeeAll});
+  const _SectionHeader({required this.title, this.onSeeAll});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -386,9 +337,9 @@ class _SectionHeader extends ConsumerWidget {
                 const SizedBox(width: 8),
                 Text(
                   title,
-                  style: AppTextStyles.titleLarge(color: textColor).copyWith(
-                    fontWeight: FontWeight.w800,
-                  ),
+                  style: AppTextStyles.titleLarge(
+                    color: textColor,
+                  ).copyWith(fontWeight: FontWeight.w800),
                 ),
               ],
             ),
@@ -397,9 +348,9 @@ class _SectionHeader extends ConsumerWidget {
                 onTap: onSeeAll,
                 child: Text(
                   AppStrings.seeAll,
-                  style: AppTextStyles.bodyMedium(color: accentColor).copyWith(
-                    fontWeight: FontWeight.w600,
-                  ),
+                  style: AppTextStyles.bodyMedium(
+                    color: accentColor,
+                  ).copyWith(fontWeight: FontWeight.w600),
                 ),
               ),
           ],
@@ -671,10 +622,9 @@ class _PlaylistCard extends StatelessWidget {
               name,
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
-              style: AppTextStyles.labelSmall(color: Colors.white).copyWith(
-                fontWeight: FontWeight.w800,
-                fontSize: 12,
-              ),
+              style: AppTextStyles.labelSmall(
+                color: Colors.white,
+              ).copyWith(fontWeight: FontWeight.w800, fontSize: 12),
             ),
           ],
         ),
@@ -690,11 +640,7 @@ class _SpotlightCard extends ConsumerWidget {
   final bool isPlaying;
   final Color accentColor;
 
-  const _SpotlightCard({
-    required this.song,
-    required this.isPlaying,
-    required this.accentColor,
-  });
+  const _SpotlightCard({required this.song, required this.isPlaying, required this.accentColor});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -743,11 +689,9 @@ class _SpotlightCard extends ConsumerWidget {
                           ),
                           child: Text(
                             'NOW PLAYING',
-                            style: AppTextStyles.labelSmall(color: accentColor).copyWith(
-                              fontSize: 9,
-                              fontWeight: FontWeight.w800,
-                              letterSpacing: 1,
-                            ),
+                            style: AppTextStyles.labelSmall(
+                              color: accentColor,
+                            ).copyWith(fontSize: 9, fontWeight: FontWeight.w800, letterSpacing: 1),
                           ),
                         ),
                         if (isPlaying) ...[
@@ -761,10 +705,9 @@ class _SpotlightCard extends ConsumerWidget {
                       song.title,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: AppTextStyles.titleMedium(color: textColor).copyWith(
-                        fontWeight: FontWeight.w700,
-                        fontSize: 16,
-                      ),
+                      style: AppTextStyles.titleMedium(
+                        color: textColor,
+                      ).copyWith(fontWeight: FontWeight.w700, fontSize: 16),
                     ),
                     const SizedBox(height: 2),
                     Text(
@@ -821,63 +764,6 @@ class _SpotlightCard extends ConsumerWidget {
   }
 }
 
-class _WelcomeSpotlightCard extends StatelessWidget {
-  final Color accentColor;
-  final VoidCallback onShufflePlay;
-
-  const _WelcomeSpotlightCard({
-    required this.accentColor,
-    required this.onShufflePlay,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final textColor = isDark ? AppColorsDark.onBackground : AppColorsLight.onBackground;
-    final subtextColor = isDark ? AppColorsDark.subtext : AppColorsLight.subtext;
-
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: AppDimensions.screenPaddingH),
-      child: GlassmorphicCard(
-        borderRadius: 24,
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Welcome to Reimix',
-              style: AppTextStyles.titleLarge(color: textColor).copyWith(
-                fontWeight: FontWeight.w800,
-                fontSize: 20,
-              ),
-            ),
-            const SizedBox(height: 6),
-            Text(
-              'Your offline local music player tailored to your mood.',
-              style: AppTextStyles.bodyMedium(color: subtextColor),
-            ),
-            const SizedBox(height: 16),
-            ElevatedButton.icon(
-              onPressed: onShufflePlay,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: accentColor,
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                elevation: 0,
-              ),
-              icon: const FaIcon(FontAwesomeIcons.shuffle, size: 14),
-              label: const Text('Quick Shuffle Play', style: TextStyle(fontWeight: FontWeight.w600)),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
 class _PlayingWaveIndicator extends StatefulWidget {
   final Color color;
   const _PlayingWaveIndicator({required this.color});
@@ -886,16 +772,15 @@ class _PlayingWaveIndicator extends StatefulWidget {
   State<_PlayingWaveIndicator> createState() => _PlayingWaveIndicatorState();
 }
 
-class _PlayingWaveIndicatorState extends State<_PlayingWaveIndicator> with SingleTickerProviderStateMixin {
+class _PlayingWaveIndicatorState extends State<_PlayingWaveIndicator>
+    with SingleTickerProviderStateMixin {
   late final AnimationController _controller;
 
   @override
   void initState() {
     super.initState();
-    _controller = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 1000),
-    )..repeat(reverse: true);
+    _controller = AnimationController(vsync: this, duration: const Duration(milliseconds: 1000))
+      ..repeat(reverse: true);
   }
 
   @override
@@ -926,6 +811,68 @@ class _PlayingWaveIndicatorState extends State<_PlayingWaveIndicator> with Singl
           }),
         );
       },
+    );
+  }
+}
+
+class _AnimatedSpotlight extends StatefulWidget {
+  final Song? song;
+  final bool isPlaying;
+  final Color accentColor;
+
+  const _AnimatedSpotlight({
+    required this.song,
+    required this.isPlaying,
+    required this.accentColor,
+  });
+
+  @override
+  State<_AnimatedSpotlight> createState() => _AnimatedSpotlightState();
+}
+
+class _AnimatedSpotlightState extends State<_AnimatedSpotlight> {
+  Song? _lastSong;
+
+  @override
+  void initState() {
+    super.initState();
+    _lastSong = widget.song;
+  }
+
+  @override
+  void didUpdateWidget(covariant _AnimatedSpotlight oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.song != null) {
+      _lastSong = widget.song;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final activeSong = widget.song ?? _lastSong;
+    final showCard = widget.song != null;
+
+    return ClipRect(
+      child: AnimatedCrossFade(
+        firstChild: activeSong != null
+            ? Padding(
+                padding: const EdgeInsets.only(bottom: AppDimensions.sp24),
+                child: _SpotlightCard(
+                  song: activeSong,
+                  isPlaying: widget.isPlaying,
+                  accentColor: widget.accentColor,
+                ),
+              )
+            : const SizedBox.shrink(),
+        secondChild: const SizedBox.shrink(),
+        crossFadeState: showCard && activeSong != null
+            ? CrossFadeState.showFirst
+            : CrossFadeState.showSecond,
+        duration: const Duration(milliseconds: 300),
+        sizeCurve: Curves.easeInOut,
+        firstCurve: Curves.easeInOut,
+        secondCurve: Curves.easeInOut,
+      ),
     );
   }
 }
