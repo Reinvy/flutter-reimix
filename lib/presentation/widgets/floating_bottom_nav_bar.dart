@@ -47,13 +47,14 @@ class FloatingBottomNavBar extends StatelessWidget {
             return Stack(
               children: [
                 // Sliding Active Indicator Capsule
-                AnimatedAlign(
+                AnimatedPositioned(
                   duration: const Duration(milliseconds: 300),
                   curve: Curves.easeInOutCubic,
-                  alignment: Alignment(-1.0 + (selectedIndex * (2.0 / (items.length - 1))), 0.0),
+                  left: selectedIndex * itemWidth + 6,
+                  width: itemWidth - 12,
+                  top: 10,
+                  bottom: 10,
                   child: Container(
-                    width: itemWidth - 12,
-                    height: 44,
                     decoration: BoxDecoration(
                       color: accentColor.withAlpha(50),
                       borderRadius: BorderRadius.circular(16),
