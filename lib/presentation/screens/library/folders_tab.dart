@@ -3,18 +3,19 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:go_router/go_router.dart';
 import 'package:shimmer/shimmer.dart';
 
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_dimensions.dart';
 import '../../../core/constants/app_strings.dart';
 import '../../../core/constants/app_text_styles.dart';
+import '../../../core/router/app_router.dart';
 import '../../../core/theme/mood_theme.dart';
 import '../../../domain/entities/song.dart';
 import '../../providers/library_provider.dart';
 import '../../providers/mood_provider.dart';
 import '../../providers/player_provider.dart';
-import '../../widgets/song_list_tile.dart';
 
 class FoldersTab extends ConsumerWidget {
   const FoldersTab({super.key});
@@ -110,120 +111,22 @@ class FoldersTab extends ConsumerWidget {
                   style: AppTextStyles.labelSmall(color: subtextColor).copyWith(fontWeight: FontWeight.w600),
                 ),
                 trailing: FaIcon(FontAwesomeIcons.chevronRight, color: subtextColor, size: 14),
-                onTap: () => _showFolderSheet(context, ref, _folderName(folderPath), folderSongs),
+                onTap: () {
+                  context.push(
+                    '${AppRoutes.library}/detail',
+                    extra: {
+                      'title': _folderName(folderPath),
+                      'type': 'folder',
+                      'songs': folderSongs,
+                      'subtitle': null,
+                    },
+                  );
+                },
               ),
             );
           },
         );
       },
-    );
-  }
-
-  void _showFolderSheet(BuildContext context, WidgetRef ref, String folderName, List<Song> songs) {
-    showModalBottomSheet<void>(
-      context: context,
-      backgroundColor: Colors.transparent,
-      isScrollControlled: true,
-      builder: (ctx) => DraggableScrollableSheet(
-        initialChildSize: 0.6,
-        maxChildSize: 0.95,
-        minChildSize: 0.3,
-        builder: (_, scrollController) {
-          final isDark = Theme.of(context).brightness == Brightness.dark;
-          final bgColor = isDark ? AppColorsDark.surface : AppColorsLight.surface;
-          final accentColor = Theme.of(context).colorScheme.tertiary;
-
-          return Container(
-            decoration: BoxDecoration(
-              color: bgColor,
-              borderRadius: const BorderRadius.vertical(
-                top: Radius.circular(AppDimensions.radiusBottomSheet),
-              ),
-            ),
-            child: Column(
-              children: [
-                // Handle
-                Container(
-                  margin: const EdgeInsets.only(top: AppDimensions.sp12),
-                  width: 40,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: isDark ? AppColorsDark.divider : AppColorsLight.divider,
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-                // Header details
-                Padding(
-                  padding: const EdgeInsets.all(AppDimensions.sp16),
-                  child: Row(
-                    children: [
-                      Container(
-                        width: 50,
-                        height: 50,
-                        decoration: BoxDecoration(
-                          color: accentColor.withAlpha(30),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Center(
-                          child: FaIcon(FontAwesomeIcons.folderOpen, color: accentColor, size: 20),
-                        ),
-                      ),
-                      const SizedBox(width: AppDimensions.sp8),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              folderName,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: AppTextStyles.titleLarge().copyWith(fontWeight: FontWeight.w800),
-                            ),
-                            Text(
-                              '${songs.length} ${songs.length == 1 ? 'song' : 'songs'}',
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: AppTextStyles.bodyMedium().copyWith(
-                                color: isDark ? AppColorsDark.subtext : AppColorsLight.subtext,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      IconButton(
-                        icon: FaIcon(FontAwesomeIcons.circlePlay, color: accentColor, size: 28),
-                        onPressed: () {
-                          Navigator.pop(ctx);
-                          if (songs.isNotEmpty) {
-                            ref.read(playerProvider.notifier).play(songs.first, queue: songs, index: 0);
-                          }
-                        },
-                      ),
-                    ],
-                  ),
-                ),
-                Divider(height: 1, color: isDark ? AppColorsDark.divider : AppColorsLight.divider),
-                Expanded(
-                  child: ListView.builder(
-                    controller: scrollController,
-                    itemCount: songs.length,
-                    itemBuilder: (_, i) {
-                      final song = songs[i];
-                      return SongListTile(
-                        song: song,
-                        onTap: () {
-                          Navigator.pop(ctx);
-                          ref.read(playerProvider.notifier).play(song, queue: songs, index: i);
-                        },
-                      );
-                    },
-                  ),
-                ),
-              ],
-            ),
-          );
-        },
-      ),
     );
   }
 }

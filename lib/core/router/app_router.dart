@@ -7,8 +7,10 @@ import '../../main.dart' show libraryWasRebuilt;
 import '../../presentation/providers/mood_provider.dart';
 import '../../presentation/providers/player_provider.dart';
 import '../../presentation/screens/focus_mode/focus_mode_screen.dart';
+import '../../domain/entities/song.dart';
 import '../../presentation/screens/home/home_screen.dart';
 import '../../presentation/screens/library/library_screen.dart';
+import '../../presentation/screens/library/library_detail_screen.dart';
 import '../../presentation/screens/now_playing/now_playing_screen.dart';
 import '../../presentation/screens/onboarding/permission_screen.dart';
 import '../../presentation/screens/playlist/playlist_detail_screen.dart';
@@ -86,7 +88,24 @@ final appRouter = GoRouter(
               state.matchedLocation == AppRoutes.home ? AppRoutes.homeIndex : null,
           routes: [GoRoute(path: 'index', builder: (context, state) => const HomeScreen())],
         ),
-        GoRoute(path: AppRoutes.library, builder: (context, state) => const LibraryScreen()),
+        GoRoute(
+          path: AppRoutes.library,
+          builder: (context, state) => const LibraryScreen(),
+          routes: [
+            GoRoute(
+              path: 'detail',
+              builder: (context, state) {
+                final extra = state.extra as Map<String, dynamic>;
+                return LibraryDetailScreen(
+                  title: extra['title'] as String,
+                  type: extra['type'] as String,
+                  songs: extra['songs'] as List<Song>,
+                  subtitle: extra['subtitle'] as String?,
+                );
+              },
+            ),
+          ],
+        ),
         GoRoute(
           path: AppRoutes.playlists,
           builder: (context, state) => const PlaylistsScreen(),
