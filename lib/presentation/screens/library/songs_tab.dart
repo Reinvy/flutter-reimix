@@ -7,8 +7,10 @@ import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_dimensions.dart';
 import '../../../core/constants/app_strings.dart';
 import '../../../core/constants/app_text_styles.dart';
+import '../../../core/theme/mood_theme.dart';
 import '../../../domain/entities/song.dart';
 import '../../providers/library_provider.dart';
+import '../../providers/mood_provider.dart';
 import '../../providers/player_provider.dart';
 import '../../widgets/song_list_tile.dart';
 
@@ -45,7 +47,11 @@ class _SongsTabState extends ConsumerState<SongsTab> {
   Widget build(BuildContext context) {
     final asyncSongs = ref.watch(libraryProvider);
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final accentColor = Theme.of(context).colorScheme.tertiary;
+    
+    // Mood-specific styles
+    final selectedMood = ref.watch(moodProvider);
+    final moodColors = MoodTheme.of(selectedMood);
+    final accentColor = moodColors.accent;
     final subtextColor = isDark ? AppColorsDark.subtext : AppColorsLight.subtext;
 
     // Show a petal-burst snackbar each time the library finishes scanning.
@@ -81,16 +87,20 @@ class _SongsTabState extends ConsumerState<SongsTab> {
                 children: [
                   Text(
                     '${songs.length} songs',
-                    style: AppTextStyles.labelSmall(color: subtextColor),
+                    style: AppTextStyles.labelSmall(color: subtextColor).copyWith(
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
                   const Spacer(),
                   GestureDetector(
-                    onTap: () => _showSortSheet(context),
+                    onTap: () => _showSortSheet(context, accentColor),
                     child: Row(
                       children: [
                         FaIcon(FontAwesomeIcons.sort, size: 14, color: accentColor),
                         const SizedBox(width: 6),
-                        Text('Sort', style: AppTextStyles.bodyMedium(color: accentColor)),
+                        Text('Sort', style: AppTextStyles.bodyMedium(color: accentColor).copyWith(
+                          fontWeight: FontWeight.w700,
+                        )),
                       ],
                     ),
                   ),
@@ -102,18 +112,23 @@ class _SongsTabState extends ConsumerState<SongsTab> {
                 color: accentColor,
                 onRefresh: () => ref.read(libraryProvider.notifier).scan(),
                 child: ListView.builder(
-                  itemCount: sorted.length + 1,
+                  padding: EdgeInsets.zero,
+                  itemCount: sorted.length + 2,
                   itemBuilder: (context, i) {
-                    if (i == sorted.length) {
+                    if (i == 0) {
+                      return _buildShuffleHero(context, sorted, accentColor);
+                    }
+                    if (i == sorted.length + 1) {
                       return SizedBox(height: ref.watch(playerProvider).currentSong != null ? 170 : 100);
                     }
-                    final song = sorted[i];
+                    final songIndex = i - 1;
+                    final song = sorted[songIndex];
                     final currentSong = ref.watch(playerProvider).currentSong;
                     return SongListTile(
                       song: song,
                       isPlaying: currentSong?.id == song.id,
                       onTap: () =>
-                          ref.read(playerProvider.notifier).play(song, queue: sorted, index: i),
+                          ref.read(playerProvider.notifier).play(song, queue: sorted, index: songIndex),
                     );
                   },
                 ),
@@ -125,12 +140,119 @@ class _SongsTabState extends ConsumerState<SongsTab> {
     );
   }
 
-  void _showSortSheet(BuildContext context) {
+  Widget _buildShuffleHero(BuildContext context, List<Song> songs, Color accentColor) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppDimensions.screenPaddingH,
+        vertical: AppDimensions.sp12,
+      ),
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [
+              accentColor.withAlpha(220),
+              accentColor.withAlpha(140),
+            ],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: [
+            BoxShadow(
+              color: accentColor.withAlpha(60),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 50,
+              height: 50,
+              decoration: BoxDecoration(
+                color: Colors.white.withAlpha(50),
+                shape: BoxShape.circle,
+              ),
+              child: const Center(
+                child: FaIcon(
+                  FontAwesomeIcons.compactDisc,
+                  color: Colors.white,
+                  size: 24,
+                ),
+              ),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Quick Shuffle Play',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    'Play your library songs in random order',
+                    style: TextStyle(
+                      color: Colors.white.withAlpha(220),
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 8),
+            GestureDetector(
+              onTap: () {
+                if (songs.isNotEmpty) {
+                  final shuffled = List<Song>.from(songs)..shuffle();
+                  ref.read(playerProvider.notifier).play(
+                    shuffled.first,
+                    queue: shuffled,
+                    index: 0,
+                  );
+                } else {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('No songs in library to play.')),
+                  );
+                }
+              },
+              child: Container(
+                width: 44,
+                height: 44,
+                decoration: const BoxDecoration(
+                  color: Colors.white,
+                  shape: BoxShape.circle,
+                ),
+                child: Center(
+                  child: FaIcon(
+                    FontAwesomeIcons.play,
+                    color: accentColor,
+                    size: 14,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showSortSheet(BuildContext context, Color accentColor) {
     showModalBottomSheet<void>(
       context: context,
       backgroundColor: Colors.transparent,
       builder: (_) => _SortSheet(
         current: _sort,
+        accentColor: accentColor,
         onSelected: (s) {
           setState(() => _sort = s);
           Navigator.pop(context);
@@ -146,8 +268,8 @@ class _ShimmerList extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Shimmer.fromColors(
-      baseColor: AppColorsLight.primary,
-      highlightColor: AppColorsLight.secondary,
+      baseColor: AppColorsLight.primary.withAlpha(100),
+      highlightColor: AppColorsLight.secondary.withAlpha(100),
       child: ListView.builder(
         itemCount: 10,
         itemBuilder: (_, __) => Padding(
@@ -188,15 +310,19 @@ class _ShimmerList extends StatelessWidget {
 
 class _SortSheet extends StatelessWidget {
   final _SortMode current;
+  final Color accentColor;
   final ValueChanged<_SortMode> onSelected;
 
-  const _SortSheet({required this.current, required this.onSelected});
+  const _SortSheet({
+    required this.current,
+    required this.accentColor,
+    required this.onSelected,
+  });
 
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final bgColor = isDark ? AppColorsDark.surface : AppColorsLight.surface;
-    final accentColor = Theme.of(context).colorScheme.tertiary;
 
     const options = [
       (_SortMode.title, 'Title'),
@@ -220,13 +346,13 @@ class _SortSheet extends StatelessWidget {
             width: 40,
             height: 4,
             decoration: BoxDecoration(
-              color: AppColorsLight.divider,
+              color: isDark ? AppColorsDark.divider : AppColorsLight.divider,
               borderRadius: BorderRadius.circular(2),
             ),
           ),
           Padding(
             padding: const EdgeInsets.all(AppDimensions.sp16),
-            child: Text('Sort By', style: AppTextStyles.titleLarge()),
+            child: Text('Sort By', style: AppTextStyles.titleLarge().copyWith(fontWeight: FontWeight.w800)),
           ),
           for (final (mode, label) in options)
             ListTile(
@@ -295,8 +421,16 @@ class _AnimatedEmptyStateState extends State<_AnimatedEmptyState>
             const SizedBox(height: AppDimensions.sp24),
             ElevatedButton.icon(
               onPressed: widget.onScan,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: accentColor,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+              ),
               icon: const FaIcon(FontAwesomeIcons.arrowsRotate, size: 16),
-              label: const Text('Scan Now'),
+              label: const Text('Scan Now', style: TextStyle(fontWeight: FontWeight.w600)),
             ),
           ],
         ),

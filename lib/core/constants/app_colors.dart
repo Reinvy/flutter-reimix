@@ -28,5 +28,6 @@ class AppColorsDark {
   static const Color onBackground = Color(0xFFF5E6EA);
   static const Color subtext = Color(0xFFC49EAA);
 
+  static const Color divider = Color(0xFF3A3035);
   static const Color shadow = Color(0x1AFF8DAA);
 }
