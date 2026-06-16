@@ -19,10 +19,12 @@ import '../../presentation/screens/splash/splash_screen.dart';
 import '../../presentation/screens/stats/stats_screen.dart';
 import '../../presentation/widgets/breath_overlay.dart';
 import '../../presentation/widgets/mini_player.dart';
+import '../../presentation/widgets/floating_bottom_nav_bar.dart';
 import '../../presentation/widgets/pulse_ripple_overlay.dart';
 import '../../presentation/widgets/rain_overlay.dart';
 import '../../presentation/widgets/sakura_overlay.dart';
 import '../../presentation/widgets/star_overlay.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import '../theme/mood_theme.dart';
 
 /// Named route constants
@@ -202,30 +204,31 @@ class _MainShellState extends ConsumerState<_MainShell> {
     });
 
     return Scaffold(
+      extendBody: true,
       body: _moodOverlay(
         mood,
         Stack(
           children: [
             widget.child,
-            // Mini player sits above the bottom nav bar
-            const Positioned(
+            // Floating MiniPlayer sits above the Floating Nav Bar
+            Positioned(
               left: 0,
               right: 0,
-              bottom: AppDimensions.bottomNavHeight,
-              child: MiniPlayer(),
+              bottom: 88 + MediaQuery.paddingOf(context).bottom,
+              child: const MiniPlayer(),
+            ),
+            // Floating Bottom Nav Bar
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: MediaQuery.paddingOf(context).bottom,
+              child: FloatingBottomNavBar(
+                selectedIndex: _selectedIndex(context),
+                onTap: (i) => context.go(_tabs[i]),
+              ),
             ),
           ],
         ),
-      ),
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _selectedIndex(context),
-        onTap: (i) => context.go(_tabs[i]),
-        items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.home_outlined), label: 'Home'),
-          BottomNavigationBarItem(icon: Icon(Icons.library_music_outlined), label: 'Library'),
-          BottomNavigationBarItem(icon: Icon(Icons.queue_music_outlined), label: 'Playlists'),
-          BottomNavigationBarItem(icon: Icon(Icons.search), label: 'Search'),
-        ],
       ),
     );
   }

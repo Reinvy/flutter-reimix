@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:shimmer/shimmer.dart';
 
 import '../../core/constants/app_colors.dart';
@@ -79,7 +80,9 @@ class AlbumCard extends StatelessWidget {
     }
     return Container(
       color: AppColorsLight.primary,
-      child: const Center(child: Icon(Icons.album_rounded, color: AppColorsLight.accent, size: 48)),
+      child: const Center(
+        child: FaIcon(FontAwesomeIcons.compactDisc, color: AppColorsLight.accent, size: 48),
+      ),
     );
   }
 }

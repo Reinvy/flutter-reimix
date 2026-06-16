@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/constants/app_colors.dart';
@@ -59,9 +60,9 @@ class HomeScreen extends ConsumerWidget {
                       ),
                     ),
                     IconButton(
-                      icon: const Icon(Icons.settings_outlined),
+                      icon: const FaIcon(FontAwesomeIcons.gear),
                       color: subtextColor,
-                      iconSize: AppDimensions.iconAction,
+                      iconSize: 18,
                       onPressed: () => context.push(AppRoutes.settings),
                     ),
                   ],
@@ -339,7 +340,7 @@ class _PlaylistsRow extends StatelessWidget {
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(Icons.add_rounded, color: accentColor, size: 28),
+                    FaIcon(FontAwesomeIcons.plus, color: accentColor, size: 24),
                     const SizedBox(height: 4),
                     Text(
                       AppStrings.newPlaylist,
@@ -391,7 +392,7 @@ class _PlaylistCard extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.queue_music_rounded, color: accentColor, size: 28),
+            FaIcon(FontAwesomeIcons.list, color: accentColor, size: 24),
             const SizedBox(height: 6),
             Text(
               name,

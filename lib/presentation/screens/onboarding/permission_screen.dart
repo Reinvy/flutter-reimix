@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:go_router/go_router.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -177,10 +178,12 @@ class _PermissionScreenState extends ConsumerState<PermissionScreen>
                       color: AppColorsLight.accent.withAlpha(40),
                       border: Border.all(color: AppColorsLight.accent.withAlpha(80), width: 2),
                     ),
-                    child: const Icon(
-                      Icons.music_note_rounded,
-                      size: 80,
-                      color: AppColorsLight.accent,
+                    child: const Center(
+                      child: FaIcon(
+                        FontAwesomeIcons.music,
+                        size: 80,
+                        color: AppColorsLight.accent,
+                      ),
                     ),
                   ),
                 ),

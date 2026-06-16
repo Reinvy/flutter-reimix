@@ -5,6 +5,7 @@ import '../../../core/constants/app_dimensions.dart';
 import '../../../core/constants/app_strings.dart';
 import '../../../core/constants/app_text_styles.dart';
 import '../../providers/library_provider.dart';
+import '../../providers/player_provider.dart';
 import '../../widgets/album_card.dart';
 
 class AlbumsTab extends ConsumerWidget {
@@ -32,7 +33,12 @@ class AlbumsTab extends ConsumerWidget {
           );
         }
         return GridView.builder(
-          padding: const EdgeInsets.all(AppDimensions.screenPaddingH),
+          padding: EdgeInsets.only(
+            left: AppDimensions.screenPaddingH,
+            right: AppDimensions.screenPaddingH,
+            top: AppDimensions.screenPaddingH,
+            bottom: ref.watch(playerProvider).currentSong != null ? 170 : 100,
+          ),
           gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
             crossAxisCount: 2,
             crossAxisSpacing: 12,

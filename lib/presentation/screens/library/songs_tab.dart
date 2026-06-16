@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:shimmer/shimmer.dart';
 
 import '../../../core/constants/app_colors.dart';
@@ -87,8 +88,8 @@ class _SongsTabState extends ConsumerState<SongsTab> {
                     onTap: () => _showSortSheet(context),
                     child: Row(
                       children: [
-                        Icon(Icons.sort_rounded, size: 18, color: accentColor),
-                        const SizedBox(width: 4),
+                        FaIcon(FontAwesomeIcons.sort, size: 14, color: accentColor),
+                        const SizedBox(width: 6),
                         Text('Sort', style: AppTextStyles.bodyMedium(color: accentColor)),
                       ],
                     ),
@@ -101,8 +102,11 @@ class _SongsTabState extends ConsumerState<SongsTab> {
                 color: accentColor,
                 onRefresh: () => ref.read(libraryProvider.notifier).scan(),
                 child: ListView.builder(
-                  itemCount: sorted.length,
+                  itemCount: sorted.length + 1,
                   itemBuilder: (context, i) {
+                    if (i == sorted.length) {
+                      return SizedBox(height: ref.watch(playerProvider).currentSong != null ? 170 : 100);
+                    }
                     final song = sorted[i];
                     final currentSong = ref.watch(playerProvider).currentSong;
                     return SongListTile(
@@ -227,7 +231,7 @@ class _SortSheet extends StatelessWidget {
           for (final (mode, label) in options)
             ListTile(
               title: Text(label, style: AppTextStyles.titleMedium()),
-              trailing: current == mode ? Icon(Icons.check_rounded, color: accentColor) : null,
+              trailing: current == mode ? FaIcon(FontAwesomeIcons.check, color: accentColor, size: 16) : null,
               onTap: () => onSelected(mode),
             ),
           const SizedBox(height: AppDimensions.sp16),
@@ -280,7 +284,7 @@ class _AnimatedEmptyStateState extends State<_AnimatedEmptyState>
           children: [
             ScaleTransition(
               scale: _scale,
-              child: Icon(Icons.library_music_rounded, size: 80, color: accentColor.withAlpha(180)),
+              child: FaIcon(FontAwesomeIcons.music, size: 72, color: accentColor.withAlpha(180)),
             ),
             const SizedBox(height: AppDimensions.sp24),
             Text(
@@ -291,7 +295,7 @@ class _AnimatedEmptyStateState extends State<_AnimatedEmptyState>
             const SizedBox(height: AppDimensions.sp24),
             ElevatedButton.icon(
               onPressed: widget.onScan,
-              icon: const Icon(Icons.refresh_rounded),
+              icon: const FaIcon(FontAwesomeIcons.arrowsRotate, size: 16),
               label: const Text('Scan Now'),
             ),
           ],

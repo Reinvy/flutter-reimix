@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:permission_handler/permission_handler.dart';
 
 import '../../../core/constants/app_colors.dart';
@@ -51,7 +52,7 @@ class LibraryScreen extends ConsumerWidget {
             if (showPermissionBanner)
               MaterialBanner(
                 backgroundColor: isDark ? AppColorsDark.surface : AppColorsLight.surface,
-                leading: Icon(Icons.folder_off_outlined, color: accentColor),
+                leading: FaIcon(FontAwesomeIcons.folderOpen, color: accentColor, size: 20),
                 content: Text(
                   AppStrings.storagePermissionBanner,
                   style: AppTextStyles.bodyMedium(color: textColor),

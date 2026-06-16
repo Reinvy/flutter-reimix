@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_dimensions.dart';
@@ -93,7 +94,7 @@ class SongListTile extends ConsumerWidget {
             // More options
             GestureDetector(
               onTap: () => _showContextMenu(context, ref),
-              child: Icon(Icons.more_vert, size: AppDimensions.iconAction, color: subtextColor),
+              child: FaIcon(FontAwesomeIcons.ellipsisVertical, size: 18, color: subtextColor),
             ),
           ],
         ),
@@ -143,7 +144,9 @@ class _AlbumArtThumbnail extends StatelessWidget {
                   color: accentColor.withAlpha(180),
                   borderRadius: BorderRadius.circular(AppDimensions.radiusAlbumArtList),
                 ),
-                child: Icon(Icons.equalizer_rounded, color: Colors.white, size: size * 0.5),
+                child: Center(
+                  child: FaIcon(FontAwesomeIcons.chartSimple, color: Colors.white, size: size * 0.4),
+                ),
               ),
             ),
         ],
@@ -169,7 +172,9 @@ class _AlbumArtThumbnail extends StatelessWidget {
       width: size,
       height: size,
       color: AppColorsLight.primary,
-      child: const Icon(Icons.music_note_rounded, color: AppColorsLight.accent),
+      child: const Center(
+        child: FaIcon(FontAwesomeIcons.music, color: AppColorsLight.accent, size: 18),
+      ),
     );
   }
 }
@@ -248,18 +253,18 @@ class _SongContextMenu extends StatelessWidget {
           ),
           const Divider(height: 1, color: AppColorsLight.divider),
           _ContextMenuItem(
-            icon: Icons.playlist_play_rounded,
+            icon: FontAwesomeIcons.circlePlay,
             label: 'Play Next',
             onTap: () => Navigator.pop(context),
           ),
           const _AddToPlaylistItem(),
           _ContextMenuItem(
-            icon: song.isFavorite ? Icons.favorite_rounded : Icons.favorite_border_rounded,
+            icon: song.isFavorite ? FontAwesomeIcons.solidHeart : FontAwesomeIcons.heart,
             label: song.isFavorite ? 'Remove from Favorites' : 'Add to Favorites',
             onTap: () => Navigator.pop(context),
           ),
           _ContextMenuItem(
-            icon: Icons.share_rounded,
+            icon: FontAwesomeIcons.shareNodes,
             label: 'Share',
             onTap: () => Navigator.pop(context),
           ),
@@ -274,13 +279,15 @@ class _SongContextMenu extends StatelessWidget {
       width: 48,
       height: 48,
       color: AppColorsLight.primary,
-      child: const Icon(Icons.music_note_rounded, color: AppColorsLight.accent, size: 20),
+      child: const Center(
+        child: FaIcon(FontAwesomeIcons.music, color: AppColorsLight.accent, size: 18),
+      ),
     );
   }
 }
 
 class _ContextMenuItem extends StatelessWidget {
-  final IconData icon;
+  final FaIconData icon;
   final String label;
   final VoidCallback onTap;
 
@@ -289,7 +296,7 @@ class _ContextMenuItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ListTile(
-      leading: Icon(icon, color: AppColorsLight.accent),
+      leading: FaIcon(icon, color: AppColorsLight.accent, size: 18),
       title: Text(label, style: AppTextStyles.titleMedium()),
       onTap: onTap,
     );
@@ -322,10 +329,11 @@ class _AddToPlaylistItemState extends State<_AddToPlaylistItem> {
       leading: AnimatedSwitcher(
         duration: const Duration(milliseconds: 200),
         transitionBuilder: (child, animation) => ScaleTransition(scale: animation, child: child),
-        child: Icon(
-          _checked ? Icons.check_circle_rounded : Icons.playlist_add_rounded,
+        child: FaIcon(
+          _checked ? FontAwesomeIcons.solidCircleCheck : FontAwesomeIcons.circlePlus,
           key: ValueKey(_checked),
           color: _checked ? Colors.green : AppColorsLight.accent,
+          size: 18,
         ),
       ),
       title: Text(AppStrings.addToPlaylist, style: AppTextStyles.titleMedium()),

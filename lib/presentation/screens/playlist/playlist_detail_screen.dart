@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_dimensions.dart';
@@ -42,19 +43,19 @@ class PlaylistDetailScreen extends ConsumerWidget {
     final recentlyPlayedAsync = ref.watch(recentlyPlayedProvider);
     final favoritesAsync = ref.watch(favoritesProvider);
 
-    final (String title, IconData icon, AsyncValue<List<Song>> songsAsync) = switch (smartType) {
-      'recently_played' => ('Recently Played', Icons.history_rounded, recentlyPlayedAsync),
+    final (String title, FaIconData icon, AsyncValue<List<Song>> songsAsync) = switch (smartType) {
+      'recently_played' => ('Recently Played', FontAwesomeIcons.clockRotateLeft, recentlyPlayedAsync),
       'most_played' => (
         'Most Played',
-        Icons.trending_up_rounded,
+        FontAwesomeIcons.chartLine,
         libraryAsync.whenData(
           (s) =>
               s.where((x) => x.playCount > 5).toList()
                 ..sort((a, b) => b.playCount.compareTo(a.playCount)),
         ),
       ),
-      'favorites' => ('Favorites', Icons.favorite_rounded, favoritesAsync),
-      _ => ('Playlist', Icons.queue_music_rounded, const AsyncData<List<Song>>([])),
+      'favorites' => ('Favorites', FontAwesomeIcons.solidHeart, favoritesAsync),
+      _ => ('Playlist', FontAwesomeIcons.list, const AsyncData<List<Song>>([])),
     };
 
     return Scaffold(
@@ -120,7 +121,7 @@ class PlaylistDetailScreen extends ConsumerWidget {
 
 class _DetailBody extends StatelessWidget {
   final String title;
-  final IconData icon;
+  final FaIconData icon;
   final List<Song> songs;
   final bool isSmartPlaylist;
   final void Function(List<Song>) onPlayAll;
@@ -158,7 +159,7 @@ class _DetailBody extends StatelessWidget {
                 Expanded(
                   child: FilledButton.icon(
                     onPressed: () => onPlayAll(songs),
-                    icon: const Icon(Icons.play_arrow_rounded),
+                    icon: const FaIcon(FontAwesomeIcons.play, size: 14),
                     label: const Text('Play All'),
                   ),
                 ),
@@ -166,7 +167,7 @@ class _DetailBody extends StatelessWidget {
                 Expanded(
                   child: OutlinedButton.icon(
                     onPressed: () => onShuffle(songs),
-                    icon: const Icon(Icons.shuffle_rounded),
+                    icon: const FaIcon(FontAwesomeIcons.shuffle, size: 14),
                     label: const Text('Shuffle'),
                   ),
                 ),
@@ -179,7 +180,7 @@ class _DetailBody extends StatelessWidget {
           itemBuilder: (context, i) =>
               SongListTile(song: songs[i], onTap: () => onPlayAll(songs.sublist(i))),
         ),
-        const SliverToBoxAdapter(child: SizedBox(height: 120)),
+        const SliverToBoxAdapter(child: SizedBox(height: 180)),
       ],
     );
   }
@@ -246,7 +247,7 @@ class _EditablePlaylistBodyState extends ConsumerState<_EditablePlaylistBody> {
                 Expanded(
                   child: FilledButton.icon(
                     onPressed: () => widget.onPlayAll(_songs),
-                    icon: const Icon(Icons.play_arrow_rounded),
+                    icon: const FaIcon(FontAwesomeIcons.play, size: 14),
                     label: const Text('Play All'),
                   ),
                 ),
@@ -254,7 +255,7 @@ class _EditablePlaylistBodyState extends ConsumerState<_EditablePlaylistBody> {
                 Expanded(
                   child: OutlinedButton.icon(
                     onPressed: () => widget.onShuffle(_songs),
-                    icon: const Icon(Icons.shuffle_rounded),
+                    icon: const FaIcon(FontAwesomeIcons.shuffle, size: 14),
                     label: const Text('Shuffle'),
                   ),
                 ),
@@ -292,7 +293,7 @@ class _EditablePlaylistBodyState extends ConsumerState<_EditablePlaylistBody> {
                     alignment: Alignment.centerRight,
                     color: Colors.red,
                     padding: const EdgeInsets.symmetric(horizontal: AppDimensions.sp16),
-                    child: const Icon(Icons.delete_outline_rounded, color: Colors.white),
+                    child: const FaIcon(FontAwesomeIcons.trashCan, color: Colors.white, size: 18),
                   ),
                   onDismissed: (_) {
                     setState(() => _songs.removeAt(i));
@@ -307,7 +308,7 @@ class _EditablePlaylistBodyState extends ConsumerState<_EditablePlaylistBody> {
               },
             ),
           ),
-        const SliverToBoxAdapter(child: SizedBox(height: 120)),
+        const SliverToBoxAdapter(child: SizedBox(height: 180)),
       ],
     );
   }
@@ -339,7 +340,7 @@ class _EditablePlaylistBodyState extends ConsumerState<_EditablePlaylistBody> {
 class _HeaderCollage extends StatelessWidget {
   final List<Song> songs;
   final String? coverPath;
-  final IconData? icon;
+  final FaIconData? icon;
 
   const _HeaderCollage({required this.songs, this.coverPath, this.icon});
 
@@ -386,9 +387,9 @@ class _HeaderCollage extends StatelessWidget {
         ),
       ),
       child: Center(
-        child: Icon(
-          icon ?? Icons.queue_music_rounded,
-          size: 72,
+        child: FaIcon(
+          icon ?? FontAwesomeIcons.list,
+          size: 64,
           color: Colors.white.withAlpha(200),
         ),
       ),

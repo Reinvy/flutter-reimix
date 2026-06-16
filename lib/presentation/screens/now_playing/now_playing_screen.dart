@@ -4,6 +4,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart' hide RepeatMode;
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:palette_generator/palette_generator.dart';
 
 import '../../../core/constants/app_colors.dart';
@@ -195,7 +196,7 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> with Ticker
       child: Row(
         children: [
           IconButton(
-            icon: const Icon(Icons.keyboard_arrow_down_rounded, size: 32),
+            icon: const FaIcon(FontAwesomeIcons.chevronDown, size: 20),
             color: isDark ? AppColorsDark.onBackground : Colors.white,
             onPressed: () => Navigator.of(context).maybePop(),
           ),
@@ -212,7 +213,7 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> with Ticker
             ),
           ),
           IconButton(
-            icon: const Icon(Icons.queue_music_rounded),
+            icon: const FaIcon(FontAwesomeIcons.list, size: 18),
             color: Colors.white,
             onPressed: () => _showQueueSheet(context, ref, ref.read(playerProvider)),
           ),
@@ -322,10 +323,10 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> with Ticker
                     onTap: () => _onFavoriteTap(song),
                     child: Transform.scale(
                       scale: scale,
-                      child: Icon(
-                        song.isFavorite ? Icons.favorite_rounded : Icons.favorite_border_rounded,
+                      child: FaIcon(
+                        song.isFavorite ? FontAwesomeIcons.solidHeart : FontAwesomeIcons.heart,
                         color: song.isFavorite ? AppColorsLight.accent : Colors.white70,
-                        size: 28,
+                        size: 24,
                       ),
                     ),
                   );
@@ -346,17 +347,18 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> with Ticker
             children: [
               // Shuffle
               IconButton(
-                icon: Icon(
-                  Icons.shuffle_rounded,
+                icon: FaIcon(
+                  FontAwesomeIcons.shuffle,
                   color: playerState.shuffleMode == ShuffleMode.on
                       ? AppColorsLight.accent
                       : Colors.white70,
+                  size: 18,
                 ),
                 onPressed: () => ref.read(playerProvider.notifier).toggleShuffle(),
               ),
               // Previous
               IconButton(
-                icon: const Icon(Icons.skip_previous_rounded, color: Colors.white, size: 36),
+                icon: const FaIcon(FontAwesomeIcons.backwardStep, color: Colors.white, size: 24),
                 onPressed: () => ref.read(playerProvider.notifier).skipToPrevious(),
               ),
               // Play / pause
@@ -386,28 +388,29 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> with Ticker
                               color: AppColorsLight.accent,
                             ),
                           )
-                        : Icon(
-                            playerState.isPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded,
-                            color: AppColorsLight.accent,
-                            size: 36,
+                        : Center(
+                            child: FaIcon(
+                              playerState.isPlaying ? FontAwesomeIcons.pause : FontAwesomeIcons.play,
+                              color: AppColorsLight.accent,
+                              size: 24,
+                            ),
                           ),
                   ),
                 ),
               ),
               // Next
               IconButton(
-                icon: const Icon(Icons.skip_next_rounded, color: Colors.white, size: 36),
+                icon: const FaIcon(FontAwesomeIcons.forwardStep, color: Colors.white, size: 24),
                 onPressed: () => ref.read(playerProvider.notifier).skipToNext(),
               ),
               // Repeat
               IconButton(
-                icon: Icon(
-                  playerState.repeatMode == RepeatMode.one
-                      ? Icons.repeat_one_rounded
-                      : Icons.repeat_rounded,
+                icon: FaIcon(
+                  FontAwesomeIcons.repeat,
                   color: playerState.repeatMode != RepeatMode.off
                       ? AppColorsLight.accent
                       : Colors.white70,
+                  size: 18,
                 ),
                 onPressed: () => ref.read(playerProvider.notifier).cycleRepeatMode(),
               ),
@@ -477,7 +480,9 @@ class RotatingAlbumArt extends StatelessWidget {
   Widget _placeholder() {
     return Container(
       color: AppColorsLight.primary,
-      child: const Icon(Icons.music_note_rounded, color: AppColorsLight.accent, size: 80),
+      child: const Center(
+        child: FaIcon(FontAwesomeIcons.music, color: AppColorsLight.accent, size: 80),
+      ),
     );
   }
 }
@@ -582,7 +587,7 @@ class _VolumeSlider extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     return Row(
       children: [
-        const Icon(Icons.volume_down_rounded, color: Colors.white70, size: 20),
+        const FaIcon(FontAwesomeIcons.volumeLow, color: Colors.white70, size: 14),
         Expanded(
           child: SliderTheme(
             data: SliderTheme.of(context).copyWith(
@@ -601,7 +606,7 @@ class _VolumeSlider extends ConsumerWidget {
             ),
           ),
         ),
-        const Icon(Icons.volume_up_rounded, color: Colors.white70, size: 20),
+        const FaIcon(FontAwesomeIcons.volumeHigh, color: Colors.white70, size: 14),
       ],
     );
   }
@@ -756,7 +761,7 @@ class _QueueSheet extends StatelessWidget {
                               alignment: Alignment.centerRight,
                               padding: const EdgeInsets.only(right: AppDimensions.sp16),
                               color: Colors.red.withAlpha(40),
-                              child: const Icon(Icons.delete_outline_rounded, color: Colors.red),
+                              child: const FaIcon(FontAwesomeIcons.trashCan, color: Colors.red, size: 18),
                             ),
                             child: SongListTile(
                               song: song,

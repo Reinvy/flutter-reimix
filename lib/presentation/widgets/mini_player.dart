@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/constants/app_colors.dart';
@@ -36,8 +37,7 @@ class MiniPlayer extends ConsumerWidget {
         child: Container(
           height: AppDimensions.miniPlayerHeight,
           margin: const EdgeInsets.symmetric(
-            horizontal: AppDimensions.sp8,
-            vertical: AppDimensions.sp4,
+            horizontal: AppDimensions.screenPaddingH,
           ),
           child: GlassmorphicCard(
             borderRadius: AppDimensions.radiusMiniPlayer,
@@ -82,8 +82,8 @@ class MiniPlayer extends ConsumerWidget {
                 ),
                 // Skip next
                 IconButton(
-                  icon: const Icon(Icons.skip_next_rounded),
-                  iconSize: AppDimensions.iconAction,
+                  icon: const FaIcon(FontAwesomeIcons.forwardStep),
+                  iconSize: 18,
                   color: AppColorsLight.onPrimary,
                   onPressed: () => ref.read(playerProvider.notifier).skipToNext(),
                 ),
@@ -126,7 +126,9 @@ class _MiniArt extends StatelessWidget {
   Widget _placeholder() {
     return Container(
       color: AppColorsLight.primary,
-      child: const Icon(Icons.music_note_rounded, color: AppColorsLight.accent, size: 20),
+      child: const Center(
+        child: FaIcon(FontAwesomeIcons.music, color: AppColorsLight.accent, size: 18),
+      ),
     );
   }
 }
@@ -153,8 +155,8 @@ class _PlayPauseButton extends StatelessWidget {
       );
     }
     return IconButton(
-      icon: Icon(isPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded),
-      iconSize: AppDimensions.iconAction,
+      icon: FaIcon(isPlaying ? FontAwesomeIcons.pause : FontAwesomeIcons.play),
+      iconSize: 18,
       color: AppColorsLight.accent,
       onPressed: onTap,
     );

@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_dimensions.dart';
@@ -66,10 +67,14 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                 focusNode: _focus,
                 decoration: InputDecoration(
                   hintText: 'Songs, albums, artists…',
-                  prefixIcon: const Icon(Icons.search_rounded),
+                  prefixIcon: const Center(
+                    widthFactor: 1,
+                    heightFactor: 1,
+                    child: FaIcon(FontAwesomeIcons.magnifyingGlass, size: 16),
+                  ),
                   suffixIcon: query.isNotEmpty
                       ? IconButton(
-                          icon: const Icon(Icons.clear_rounded),
+                          icon: const FaIcon(FontAwesomeIcons.xmark, size: 16),
                           onPressed: () {
                             _ctrl.clear();
                             ref.read(searchProvider.notifier).setQuery('');
@@ -154,7 +159,7 @@ class _RecentSearches extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.search_rounded, size: 64, color: subtext.withAlpha(100)),
+            FaIcon(FontAwesomeIcons.magnifyingGlass, size: 64, color: subtext.withAlpha(100)),
             const SizedBox(height: AppDimensions.sp12),
             Text('Search your music', style: AppTextStyles.bodyMedium(color: subtext)),
           ],
@@ -183,11 +188,12 @@ class _RecentSearches extends StatelessWidget {
                   label: Text(q),
                   onPressed: () => onSelect(q),
                   onDeleted: () => onRemove(q),
-                  deleteIcon: const Icon(Icons.close_rounded, size: 16),
+                  deleteIcon: const FaIcon(FontAwesomeIcons.xmark, size: 12),
                 ),
               )
               .toList(),
         ),
+        const SizedBox(height: 180),
       ],
     );
   }
@@ -207,7 +213,7 @@ class _NoResults extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(Icons.music_off_rounded, size: 64, color: subtext.withAlpha(100)),
+          FaIcon(FontAwesomeIcons.music, size: 64, color: subtext.withAlpha(100)),
           const SizedBox(height: AppDimensions.sp12),
           Text(
             'No results for "$query"',
@@ -253,7 +259,7 @@ class _ResultsList extends ConsumerWidget {
           _SectionHeader(title: 'Playlists (${results.playlists.length})', color: subtext),
           ...results.playlists.map((p) => _PlaylistResultTile(playlist: p)),
         ],
-        const SizedBox(height: 120),
+        const SizedBox(height: 180),
       ],
     );
   }
@@ -312,7 +318,9 @@ class _AlbumResultTile extends StatelessWidget {
     width: 44,
     height: 44,
     color: AppColorsLight.primary,
-    child: const Icon(Icons.album_rounded, color: AppColorsLight.accent),
+    child: const Center(
+      child: FaIcon(FontAwesomeIcons.compactDisc, color: AppColorsLight.accent, size: 18),
+    ),
   );
 }
 
@@ -357,7 +365,9 @@ class _PlaylistResultTile extends StatelessWidget {
           color: AppColorsLight.primary,
           borderRadius: BorderRadius.circular(AppDimensions.sp8),
         ),
-        child: const Icon(Icons.queue_music_rounded, color: AppColorsLight.accent),
+        child: const Center(
+          child: FaIcon(FontAwesomeIcons.list, color: AppColorsLight.accent, size: 18),
+        ),
       ),
       title: Text(
         playlist.name,

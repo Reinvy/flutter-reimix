@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -98,17 +99,17 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                         segments: const [
                           ButtonSegment(
                             value: ThemeMode.light,
-                            icon: Icon(Icons.light_mode_rounded),
+                            icon: FaIcon(FontAwesomeIcons.sun, size: 14),
                             label: Text('Light'),
                           ),
                           ButtonSegment(
                             value: ThemeMode.system,
-                            icon: Icon(Icons.phone_android_rounded),
+                            icon: FaIcon(FontAwesomeIcons.mobileScreen, size: 14),
                             label: Text('System'),
                           ),
                           ButtonSegment(
                             value: ThemeMode.dark,
-                            icon: Icon(Icons.dark_mode_rounded),
+                            icon: FaIcon(FontAwesomeIcons.moon, size: 14),
                             label: Text('Dark'),
                           ),
                         ],
@@ -187,7 +188,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             child: Column(
               children: [
                 ListTile(
-                  leading: Icon(Icons.music_note_rounded, color: accentColor),
+                  leading: FaIcon(FontAwesomeIcons.music, color: accentColor, size: 16),
                   title: Text(
                     AppStrings.appName,
                     style: AppTextStyles.titleMedium(color: textColor),
@@ -199,8 +200,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 ),
                 const Divider(height: 1, color: AppColorsLight.divider),
                 ListTile(
-                  leading: Icon(Icons.bug_report_outlined, color: accentColor),
-                  trailing: Icon(Icons.chevron_right_rounded, color: subtextColor),
+                  leading: FaIcon(FontAwesomeIcons.bug, color: accentColor, size: 16),
+                  trailing: FaIcon(FontAwesomeIcons.chevronRight, color: subtextColor, size: 14),
                   title: Text(
                     AppStrings.errorLog,
                     style: AppTextStyles.titleMedium(color: textColor),
@@ -214,7 +215,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               ],
             ),
           ),
-          const SizedBox(height: AppDimensions.sp32),
+          const SizedBox(height: 180),
         ],
       ),
     );

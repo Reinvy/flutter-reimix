@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lottie/lottie.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -82,10 +83,12 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
                         ),
                       ],
                     ),
-                    child: const Icon(
-                      Icons.music_note_rounded,
-                      color: AppColorsLight.accent,
-                      size: 48,
+                    child: const Center(
+                      child: FaIcon(
+                        FontAwesomeIcons.music,
+                        color: AppColorsLight.accent,
+                        size: 48,
+                      ),
                     ),
                   ),
                   const SizedBox(height: 20),

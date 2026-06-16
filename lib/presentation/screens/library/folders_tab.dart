@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_dimensions.dart';
@@ -56,8 +57,11 @@ class FoldersTab extends ConsumerWidget {
           ..sort((a, b) => _folderName(a.key).compareTo(_folderName(b.key)));
 
         return ListView.builder(
-          itemCount: sortedFolders.length,
+          itemCount: sortedFolders.length + 1,
           itemBuilder: (context, i) {
+            if (i == sortedFolders.length) {
+              return SizedBox(height: ref.watch(playerProvider).currentSong != null ? 170 : 100);
+            }
             final entry = sortedFolders[i];
             final folderPath = entry.key;
             final folderSongs = entry.value;
@@ -75,14 +79,16 @@ class FoldersTab extends ConsumerWidget {
                   color: accentColor.withAlpha(30),
                   borderRadius: BorderRadius.circular(AppDimensions.sp8),
                 ),
-                child: Icon(Icons.folder_rounded, color: accentColor),
+                child: Center(
+                  child: FaIcon(FontAwesomeIcons.folder, color: accentColor, size: 16),
+                ),
               ),
               title: Text(_folderName(folderPath), style: AppTextStyles.titleMedium()),
               subtitle: Text(
                 '$count ${count == 1 ? 'song' : 'songs'}',
                 style: AppTextStyles.labelSmall(color: subtextColor),
               ),
-              trailing: Icon(Icons.chevron_right_rounded, color: subtextColor),
+              trailing: FaIcon(FontAwesomeIcons.chevronRight, color: subtextColor, size: 14),
               onTap: () => _showFolderSheet(context, ref, _folderName(folderPath), folderSongs),
             );
           },
@@ -126,7 +132,7 @@ class FoldersTab extends ConsumerWidget {
                   padding: const EdgeInsets.all(AppDimensions.sp16),
                   child: Row(
                     children: [
-                      const Icon(Icons.folder_rounded, color: AppColorsLight.accent),
+                      const FaIcon(FontAwesomeIcons.folderOpen, color: AppColorsLight.accent, size: 18),
                       const SizedBox(width: AppDimensions.sp8),
                       Expanded(child: Text(folderName, style: AppTextStyles.titleLarge())),
                     ],

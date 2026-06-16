@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 
@@ -246,7 +247,7 @@ class _FocusModeScreenState extends ConsumerState<FocusModeScreen> with TickerPr
                   Align(
                     alignment: Alignment.topLeft,
                     child: IconButton(
-                      icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white70),
+                      icon: const FaIcon(FontAwesomeIcons.chevronLeft, color: Colors.white70),
                       onPressed: () => Navigator.of(context).pop(),
                     ),
                   ),
@@ -332,7 +333,7 @@ class _FocusModeScreenState extends ConsumerState<FocusModeScreen> with TickerPr
                       foregroundColor: Colors.white,
                       side: const BorderSide(color: Colors.white38),
                     ),
-                    icon: Icon(_timerActive ? Icons.timer_off_rounded : Icons.timer_rounded),
+                    icon: const FaIcon(FontAwesomeIcons.stopwatch),
                     label: Text(_timerActive ? 'Edit Timer' : 'Sleep Timer'),
                     onPressed: _showSleepTimerSheet,
                   ),
@@ -355,7 +356,9 @@ class _FocusModeScreenState extends ConsumerState<FocusModeScreen> with TickerPr
         color: accent.withAlpha(60),
         borderRadius: BorderRadius.circular(AppDimensions.radiusCard),
       ),
-      child: const Icon(Icons.music_note_rounded, color: Colors.white54, size: 64),
+      child: const Center(
+        child: FaIcon(FontAwesomeIcons.music, color: Colors.white54, size: 64),
+      ),
     );
   }
 
@@ -522,7 +525,7 @@ class _SleepTimerSheetState extends State<_SleepTimerSheet> {
           if (widget.isActive) ...[
             const Divider(),
             ListTile(
-              leading: const Icon(Icons.timer_off_rounded, color: Colors.red),
+              leading: const FaIcon(FontAwesomeIcons.stopwatch, color: Colors.red, size: 18),
               title: const Text('Cancel Timer', style: TextStyle(color: Colors.red)),
               onTap: widget.onCancel,
             ),

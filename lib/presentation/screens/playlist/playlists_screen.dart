@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 
@@ -11,6 +12,7 @@ import '../../../core/constants/app_text_styles.dart';
 import '../../../domain/entities/playlist.dart';
 import '../../../domain/entities/song.dart';
 import '../../providers/library_provider.dart';
+import '../../providers/player_provider.dart';
 import '../../providers/playlist_provider.dart';
 
 class PlaylistsScreen extends ConsumerWidget {
@@ -66,7 +68,7 @@ class PlaylistsScreen extends ConsumerWidget {
               child: Column(
                 children: [
                   _SmartPlaylistTile(
-                    icon: Icons.history_rounded,
+                    icon: FontAwesomeIcons.clockRotateLeft,
                     label: 'Recently Played',
                     subtitle: recentlyPlayedAsync.when(
                       data: (s) => '${s.length} songs',
@@ -78,7 +80,7 @@ class PlaylistsScreen extends ConsumerWidget {
                     onTap: () => context.go('/playlists/smart/recently_played'),
                   ),
                   _SmartPlaylistTile(
-                    icon: Icons.trending_up_rounded,
+                    icon: FontAwesomeIcons.chartLine,
                     label: 'Most Played',
                     subtitle: ref
                         .watch(libraryProvider)
@@ -98,7 +100,7 @@ class PlaylistsScreen extends ConsumerWidget {
                     onTap: () => context.go('/playlists/smart/most_played'),
                   ),
                   _SmartPlaylistTile(
-                    icon: Icons.favorite_rounded,
+                    icon: FontAwesomeIcons.solidHeart,
                     label: 'Favorites',
                     subtitle: favoritesAsync.when(
                       data: (s) => '${s.length} songs',
@@ -168,15 +170,20 @@ class PlaylistsScreen extends ConsumerWidget {
               },
             ),
 
-            const SliverToBoxAdapter(child: SizedBox(height: 120)),
+            SliverToBoxAdapter(
+              child: SizedBox(height: ref.watch(playerProvider).currentSong != null ? 170 : 100),
+            ),
           ],
         ),
       ),
-      floatingActionButton: FloatingActionButton(
-        backgroundColor: accent,
-        foregroundColor: Colors.white,
-        onPressed: () => _showCreateDialog(context, ref),
-        child: const Icon(Icons.add_rounded),
+      floatingActionButton: Padding(
+        padding: EdgeInsets.only(bottom: ref.watch(playerProvider).currentSong != null ? 168 : 92),
+        child: FloatingActionButton(
+          backgroundColor: accent,
+          foregroundColor: Colors.white,
+          onPressed: () => _showCreateDialog(context, ref),
+          child: const FaIcon(FontAwesomeIcons.plus),
+        ),
       ),
     );
   }
@@ -215,7 +222,7 @@ class PlaylistsScreen extends ConsumerWidget {
 // ── Smart playlist tile ───────────────────────────────────────────────────────
 
 class _SmartPlaylistTile extends StatelessWidget {
-  final IconData icon;
+  final FaIconData icon;
   final String label;
   final String subtitle;
   final List<Song> songs;
@@ -243,11 +250,13 @@ class _SmartPlaylistTile extends StatelessWidget {
           color: accent.withAlpha(40),
           borderRadius: BorderRadius.circular(AppDimensions.sp12),
         ),
-        child: Icon(icon, color: accent),
+        child: Center(
+          child: FaIcon(icon, color: accent, size: 16),
+        ),
       ),
       title: Text(label, style: AppTextStyles.titleMedium()),
       subtitle: Text(subtitle, style: AppTextStyles.bodyMedium()),
-      trailing: const Icon(Icons.chevron_right_rounded),
+      trailing: const FaIcon(FontAwesomeIcons.chevronRight, size: 14),
       onTap: onTap,
     );
   }
@@ -274,7 +283,7 @@ class _UserPlaylistTile extends StatelessWidget {
         overflow: TextOverflow.ellipsis,
       ),
       subtitle: Text('${playlist.songs.length} songs', style: AppTextStyles.bodyMedium()),
-      trailing: const Icon(Icons.chevron_right_rounded),
+      trailing: const FaIcon(FontAwesomeIcons.chevronRight, size: 14),
       onTap: onTap,
       onLongPress: onDelete,
     );
@@ -315,7 +324,9 @@ class _UserPlaylistTile extends StatelessWidget {
       width: 48,
       height: 48,
       color: AppColorsLight.primary,
-      child: const Icon(Icons.queue_music_rounded, color: AppColorsLight.accent),
+      child: const Center(
+        child: FaIcon(FontAwesomeIcons.list, color: AppColorsLight.accent, size: 18),
+      ),
     );
   }
 }
@@ -396,10 +407,12 @@ class _CreatePlaylistDialogState extends State<_CreatePlaylistDialog> {
                       borderRadius: BorderRadius.circular(AppDimensions.sp12),
                       child: Image.file(File(_coverPath!), fit: BoxFit.cover),
                     )
-                  : const Icon(
-                      Icons.add_photo_alternate_rounded,
-                      color: AppColorsLight.accent,
-                      size: 36,
+                  : const Center(
+                      child: FaIcon(
+                        FontAwesomeIcons.image,
+                        color: AppColorsLight.accent,
+                        size: 32,
+                      ),
                     ),
             ),
           ),

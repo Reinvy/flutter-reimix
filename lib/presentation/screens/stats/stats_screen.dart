@@ -2,6 +2,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_dimensions.dart';
@@ -66,7 +67,7 @@ class _StatsBody extends StatelessWidget {
                   child: _StatCard(
                     label: 'Total Time',
                     value: _formatTotal(stats.totalListenedMs),
-                    icon: Icons.headphones_rounded,
+                    icon: FontAwesomeIcons.headphones,
                     accent: accent,
                   ),
                 ),
@@ -75,7 +76,7 @@ class _StatsBody extends StatelessWidget {
                   child: _StatCard(
                     label: 'Streak',
                     value: '${stats.streak} day${stats.streak == 1 ? '' : 's'}',
-                    icon: Icons.local_fire_department_rounded,
+                    icon: FontAwesomeIcons.fire,
                     accent: Colors.orange,
                   ),
                 ),
@@ -202,7 +203,7 @@ class _StatsBody extends StatelessWidget {
 class _StatCard extends StatelessWidget {
   final String label;
   final String value;
-  final IconData icon;
+  final FaIconData icon;
   final Color accent;
 
   const _StatCard({
@@ -225,7 +226,7 @@ class _StatCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, color: accent, size: 28),
+          FaIcon(icon, color: accent, size: 28),
           const SizedBox(height: AppDimensions.sp8),
           Text(value, style: AppTextStyles.headlineMedium(color: accent)),
           Text(label, style: AppTextStyles.bodyMedium()),
