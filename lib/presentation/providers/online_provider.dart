@@ -28,7 +28,7 @@ class YoutubeSearchNotifier extends StateNotifier<AsyncValue<List<Song>>> {
         // Generate a unique non-zero integer ID from the video hash code.
         // Make it negative to clearly separate from local media store positive IDs.
         final id = -video.id.value.hashCode.abs();
-        
+
         return Song(
           id: id,
           filePath: 'youtube://${video.id.value}',
@@ -50,8 +50,9 @@ class YoutubeSearchNotifier extends StateNotifier<AsyncValue<List<Song>>> {
   }
 }
 
-final youtubeSearchProvider =
-    StateNotifierProvider<YoutubeSearchNotifier, AsyncValue<List<Song>>>((ref) {
+final youtubeSearchProvider = StateNotifierProvider<YoutubeSearchNotifier, AsyncValue<List<Song>>>((
+  ref,
+) {
   return YoutubeSearchNotifier();
 });
 
@@ -71,6 +72,7 @@ class DownloadQueueNotifier extends StateNotifier<Map<String, double>> {
 
     state = {...state, videoId: 0.0};
     final yt = YoutubeExplode();
+    IOSink? fileSink;
 
     try {
       // 1. Get audio stream metadata
@@ -92,21 +94,22 @@ class DownloadQueueNotifier extends StateNotifier<Map<String, double>> {
         await file.delete();
       }
 
-      // 3. Download the stream chunk by chunk
+      // 3. Get the native stream from youtube_explode_dart
       final stream = yt.videos.streamsClient.get(audioStream);
-      final fileSink = file.openWrite();
+      fileSink = file.openWrite();
       int downloadedBytes = 0;
 
       await for (final chunk in stream) {
         fileSink.add(chunk);
         downloadedBytes += chunk.length;
-        
+
         // Update live progress
         final progress = downloadedBytes / totalBytes;
         state = {...state, videoId: progress};
       }
 
       await fileSink.close();
+      fileSink = null;
 
       // 4. Register downloaded song into ObjectBox
       final model = SongModel()
@@ -117,17 +120,31 @@ class DownloadQueueNotifier extends StateNotifier<Map<String, double>> {
         ..durationMs = song.durationMs
         ..albumArtPath = song.albumArtPath // Keep remote URL thumbnail
         ..dateAdded = DateTime.now();
-      
+
       objectBox.songBox.put(model);
 
       // Invalidate the libraryProvider so it scans and lists the downloaded song immediately
       ref.invalidate(libraryProvider);
 
       return true;
-    } catch (_) {
+    } catch (e) {
+      // Clean up partially downloaded file
+      try {
+        final docsDir = await getApplicationDocumentsDirectory();
+        final localPath = '${docsDir.path}/Downloads/youtube_$videoId.m4a';
+        final file = File(localPath);
+        if (await file.exists()) {
+          await file.delete();
+        }
+      } catch (_) {}
       return false;
     } finally {
       yt.close();
+      if (fileSink != null) {
+        try {
+          await fileSink.close();
+        } catch (_) {}
+      }
       // Remove from active queue
       final updated = Map<String, double>.from(state)..remove(videoId);
       state = updated;
@@ -135,8 +152,9 @@ class DownloadQueueNotifier extends StateNotifier<Map<String, double>> {
   }
 }
 
-final downloadQueueProvider =
-    StateNotifierProvider<DownloadQueueNotifier, Map<String, double>>((ref) {
+final downloadQueueProvider = StateNotifierProvider<DownloadQueueNotifier, Map<String, double>>((
+  ref,
+) {
   return DownloadQueueNotifier();
 });
 
@@ -157,10 +175,10 @@ class OnlineRecentsNotifier extends StateNotifier<List<String>> {
   Future<void> add(String query) async {
     final q = query.trim();
     if (q.isEmpty) return;
-    
+
     final updated = [q, ...state.where((item) => item != q)].take(10).toList();
     state = updated;
-    
+
     final prefs = await SharedPreferences.getInstance();
     await prefs.setStringList(_key, updated);
   }
@@ -168,7 +186,7 @@ class OnlineRecentsNotifier extends StateNotifier<List<String>> {
   Future<void> remove(String query) async {
     final updated = state.where((item) => item != query).toList();
     state = updated;
-    
+
     final prefs = await SharedPreferences.getInstance();
     await prefs.setStringList(_key, updated);
   }
@@ -180,7 +198,6 @@ class OnlineRecentsNotifier extends StateNotifier<List<String>> {
   }
 }
 
-final onlineRecentsProvider =
-    StateNotifierProvider<OnlineRecentsNotifier, List<String>>((ref) {
+final onlineRecentsProvider = StateNotifierProvider<OnlineRecentsNotifier, List<String>>((ref) {
   return OnlineRecentsNotifier();
 });

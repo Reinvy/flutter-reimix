@@ -13,7 +13,11 @@ import '../../../domain/entities/song.dart';
 /// [just_audio] [AudioPlayer].  Manages the current queue, exposes position
 /// and playing-state streams, and keeps the OS media session in sync.
 class ReimixAudioHandler extends BaseAudioHandler with SeekHandler {
-  final _player = AudioPlayer();
+  final _player = AudioPlayer(
+    userAgent:
+        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+    useProxyForRequestHeaders: false,
+  );
   final _errorController = StreamController<AudioException>.broadcast();
 
   List<Song> _queue = [];
@@ -73,17 +77,44 @@ class ReimixAudioHandler extends BaseAudioHandler with SeekHandler {
       final videoId = filePath.replaceFirst('youtube://', '');
       final yt = YoutubeExplode();
       try {
-        final manifest = await yt.videos.streamsClient.getManifest(videoId);
+        final manifest = await yt.videos.streams.getManifest(
+          videoId,
+          ytClients: [
+            YoutubeApiClient.androidVr,
+            YoutubeApiClient.safari,
+            YoutubeApiClient.android,
+            YoutubeApiClient.ios,
+          ],
+        );
         final audioStream = manifest.audioOnly.withHighestBitrate();
-        final streamUrl = audioStream.url;
-        yt.close();
-        return streamUrl;
+        return audioStream.url;
       } catch (e) {
-        yt.close();
         throw AudioException('Failed to resolve YouTube audio stream for $videoId', cause: e);
+      } finally {
+        yt.close();
       }
     }
     return Uri.parse(filePath);
+  }
+
+  Future<AudioSource> _createAudioSource(Song song) async {
+    final resolvedUri = await _resolveAudioUri(song.filePath);
+    final isYoutube = song.filePath.startsWith('youtube://');
+    if (isYoutube) {
+      return AudioSource.uri(
+        resolvedUri,
+        headers: const {
+          'User-Agent':
+              'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+          'Accept': '*/*',
+          'Accept-Encoding': 'gzip, deflate, br',
+          'Connection': 'keep-alive',
+          'Origin': 'https://www.youtube.com',
+          'Referer': 'https://www.youtube.com/',
+        },
+      );
+    }
+    return AudioSource.uri(resolvedUri);
   }
 
   // ── Public API ──────────────────────────────────────────────────────────────
@@ -94,8 +125,8 @@ class ReimixAudioHandler extends BaseAudioHandler with SeekHandler {
     _currentIndex = queueIndex;
     mediaItem.add(song.toMediaItem());
     try {
-      final resolvedUri = await _resolveAudioUri(song.filePath);
-      await _player.setAudioSource(AudioSource.uri(resolvedUri));
+      final source = await _createAudioSource(song);
+      await _player.setAudioSource(source);
       await _player.play();
     } catch (e) {
       _errorController.add(
@@ -131,8 +162,8 @@ class ReimixAudioHandler extends BaseAudioHandler with SeekHandler {
       final song = _queue[_currentIndex];
       mediaItem.add(song.toMediaItem());
       try {
-        final resolvedUri = await _resolveAudioUri(song.filePath);
-        await _player.setAudioSource(AudioSource.uri(resolvedUri));
+        final source = await _createAudioSource(song);
+        await _player.setAudioSource(source);
         await _player.play();
       } catch (e) {
         _errorController.add(
@@ -155,8 +186,8 @@ class ReimixAudioHandler extends BaseAudioHandler with SeekHandler {
       final song = _queue[_currentIndex];
       mediaItem.add(song.toMediaItem());
       try {
-        final resolvedUri = await _resolveAudioUri(song.filePath);
-        await _player.setAudioSource(AudioSource.uri(resolvedUri));
+        final source = await _createAudioSource(song);
+        await _player.setAudioSource(source);
         await _player.play();
       } catch (e) {
         _errorController.add(
