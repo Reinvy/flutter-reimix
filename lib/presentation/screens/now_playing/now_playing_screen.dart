@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:palette_generator/palette_generator.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_dimensions.dart';
@@ -74,8 +75,11 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> with Ticker
     if (artPath == null || artPath == _lastArtPath) return;
     _lastArtPath = artPath;
     try {
+      final imageProvider = artPath.startsWith('http')
+          ? NetworkImage(artPath) as ImageProvider
+          : FileImage(File(artPath));
       final palette = await PaletteGenerator.fromImageProvider(
-        FileImage(File(artPath)),
+        imageProvider,
         size: const Size(100, 100),
       );
       if (mounted) {
@@ -468,6 +472,14 @@ class RotatingAlbumArt extends StatelessWidget {
 
   Widget _buildArt() {
     if (artPath != null && artPath!.isNotEmpty) {
+      if (artPath!.startsWith('http')) {
+        return CachedNetworkImage(
+          imageUrl: artPath!,
+          fit: BoxFit.cover,
+          placeholder: (_, __) => _placeholder(),
+          errorWidget: (_, __, ___) => _placeholder(),
+        );
+      }
       return Image.file(
         File(artPath!),
         fit: BoxFit.cover,
@@ -506,11 +518,18 @@ class _BlurredBackground extends StatelessWidget {
         if (artPath != null && artPath!.isNotEmpty)
           ImageFiltered(
             imageFilter: ColorFilter.mode(Colors.black.withAlpha(100), BlendMode.darken),
-            child: Image.file(
-              File(artPath!),
-              fit: BoxFit.cover,
-              errorBuilder: (_, __, ___) => const SizedBox.shrink(),
-            ),
+            child: artPath!.startsWith('http')
+              ? CachedNetworkImage(
+                  imageUrl: artPath!,
+                  fit: BoxFit.cover,
+                  placeholder: (_, __) => const SizedBox.shrink(),
+                  errorWidget: (_, __, ___) => const SizedBox.shrink(),
+                )
+              : Image.file(
+                  File(artPath!),
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+                ),
           ),
         // Gradient overlay
         Container(decoration: BoxDecoration(gradient: gradient)),

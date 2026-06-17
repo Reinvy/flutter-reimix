@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:audio_service/audio_service.dart';
 import 'package:just_audio/just_audio.dart';
+import 'package:youtube_explode_dart/youtube_explode_dart.dart';
 
 import '../../../core/errors/app_exceptions.dart';
 import '../../../domain/entities/song.dart';
@@ -67,6 +68,24 @@ class ReimixAudioHandler extends BaseAudioHandler with SeekHandler {
     );
   }
 
+  Future<Uri> _resolveAudioUri(String filePath) async {
+    if (filePath.startsWith('youtube://')) {
+      final videoId = filePath.replaceFirst('youtube://', '');
+      final yt = YoutubeExplode();
+      try {
+        final manifest = await yt.videos.streamsClient.getManifest(videoId);
+        final audioStream = manifest.audioOnly.withHighestBitrate();
+        final streamUrl = audioStream.url;
+        yt.close();
+        return streamUrl;
+      } catch (e) {
+        yt.close();
+        throw AudioException('Failed to resolve YouTube audio stream for $videoId', cause: e);
+      }
+    }
+    return Uri.parse(filePath);
+  }
+
   // ── Public API ──────────────────────────────────────────────────────────────
 
   /// Starts playback of [song], optionally replacing the entire [queue].
@@ -75,7 +94,8 @@ class ReimixAudioHandler extends BaseAudioHandler with SeekHandler {
     _currentIndex = queueIndex;
     mediaItem.add(song.toMediaItem());
     try {
-      await _player.setAudioSource(AudioSource.uri(Uri.parse(song.filePath)));
+      final resolvedUri = await _resolveAudioUri(song.filePath);
+      await _player.setAudioSource(AudioSource.uri(resolvedUri));
       await _player.play();
     } catch (e) {
       _errorController.add(
@@ -110,8 +130,15 @@ class ReimixAudioHandler extends BaseAudioHandler with SeekHandler {
       _currentIndex++;
       final song = _queue[_currentIndex];
       mediaItem.add(song.toMediaItem());
-      await _player.setAudioSource(AudioSource.uri(Uri.parse(song.filePath)));
-      await _player.play();
+      try {
+        final resolvedUri = await _resolveAudioUri(song.filePath);
+        await _player.setAudioSource(AudioSource.uri(resolvedUri));
+        await _player.play();
+      } catch (e) {
+        _errorController.add(
+          AudioException('Cannot play "${song.title}" — stream error.', cause: e),
+        );
+      }
     } else {
       // End of queue — stop
       await stop();
@@ -127,8 +154,15 @@ class ReimixAudioHandler extends BaseAudioHandler with SeekHandler {
       _currentIndex--;
       final song = _queue[_currentIndex];
       mediaItem.add(song.toMediaItem());
-      await _player.setAudioSource(AudioSource.uri(Uri.parse(song.filePath)));
-      await _player.play();
+      try {
+        final resolvedUri = await _resolveAudioUri(song.filePath);
+        await _player.setAudioSource(AudioSource.uri(resolvedUri));
+        await _player.play();
+      } catch (e) {
+        _errorController.add(
+          AudioException('Cannot play "${song.title}" — stream error.', cause: e),
+        );
+      }
     } else {
       await _player.seek(Duration.zero);
     }
@@ -179,6 +213,8 @@ extension SongToMediaItem on Song {
     artist: artist,
     album: album,
     duration: Duration(milliseconds: durationMs),
-    artUri: albumArtPath != null ? Uri.file(albumArtPath!) : null,
+    artUri: albumArtPath != null
+        ? (albumArtPath!.startsWith('http') ? Uri.parse(albumArtPath!) : Uri.file(albumArtPath!))
+        : null,
   );
 }

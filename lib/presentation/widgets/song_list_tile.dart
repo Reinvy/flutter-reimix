@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_dimensions.dart';
@@ -156,6 +157,16 @@ class _AlbumArtThumbnail extends StatelessWidget {
 
   Widget _buildImage() {
     if (artPath != null && artPath!.isNotEmpty) {
+      if (artPath!.startsWith('http')) {
+        return CachedNetworkImage(
+          imageUrl: artPath!,
+          width: size,
+          height: size,
+          fit: BoxFit.cover,
+          placeholder: (_, __) => _placeholder(),
+          errorWidget: (_, __, ___) => _placeholder(),
+        );
+      }
       return Image.file(
         File(artPath!),
         width: size,
@@ -219,13 +230,22 @@ class _SongContextMenu extends StatelessWidget {
                 ClipRRect(
                   borderRadius: BorderRadius.circular(AppDimensions.sp8),
                   child: song.albumArtPath != null
-                      ? Image.file(
-                          File(song.albumArtPath!),
-                          width: 48,
-                          height: 48,
-                          fit: BoxFit.cover,
-                          errorBuilder: (_, __, ___) => _artPlaceholder(),
-                        )
+                      ? (song.albumArtPath!.startsWith('http')
+                          ? CachedNetworkImage(
+                              imageUrl: song.albumArtPath!,
+                              width: 48,
+                              height: 48,
+                              fit: BoxFit.cover,
+                              placeholder: (_, __) => _artPlaceholder(),
+                              errorWidget: (_, __, ___) => _artPlaceholder(),
+                            )
+                          : Image.file(
+                              File(song.albumArtPath!),
+                              width: 48,
+                              height: 48,
+                              fit: BoxFit.cover,
+                              errorBuilder: (_, __, ___) => _artPlaceholder(),
+                            ))
                       : _artPlaceholder(),
                 ),
                 const SizedBox(width: AppDimensions.sp12),

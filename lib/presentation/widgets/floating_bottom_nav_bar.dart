@@ -26,6 +26,7 @@ class FloatingBottomNavBar extends StatelessWidget {
       ),
       (inactiveIcon: FontAwesomeIcons.music, activeIcon: FontAwesomeIcons.music, label: 'Library'),
       (inactiveIcon: FontAwesomeIcons.list, activeIcon: FontAwesomeIcons.list, label: 'Playlists'),
+      (inactiveIcon: FontAwesomeIcons.earthAmericas, activeIcon: FontAwesomeIcons.earthAmericas, label: 'Online'),
       (
         inactiveIcon: FontAwesomeIcons.magnifyingGlass,
         activeIcon: FontAwesomeIcons.magnifyingGlass,

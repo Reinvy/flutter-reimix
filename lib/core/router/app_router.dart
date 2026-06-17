@@ -14,6 +14,7 @@ import '../../presentation/screens/now_playing/now_playing_screen.dart';
 import '../../presentation/screens/onboarding/permission_screen.dart';
 import '../../presentation/screens/playlist/playlist_detail_screen.dart';
 import '../../presentation/screens/playlist/playlists_screen.dart';
+import '../../presentation/screens/online/online_music_screen.dart';
 import '../../presentation/screens/search/search_screen.dart';
 import '../../presentation/screens/settings/settings_screen.dart';
 import '../../presentation/screens/splash/splash_screen.dart';
@@ -38,6 +39,7 @@ class AppRoutes {
   static const String library = '/library';
   static const String playlists = '/playlists';
   static const String playlistDetail = '/playlists/detail/:id';
+  static const String online = '/online';
   static const String search = '/search';
   static const String nowPlaying = '/now-playing';
   static const String focusMode = '/focus-mode';
@@ -121,6 +123,10 @@ final appRouter = GoRouter(
             ),
           ],
         ),
+        GoRoute(
+          path: AppRoutes.online,
+          builder: (context, state) => const OnlineMusicScreen(),
+        ),
         GoRoute(path: AppRoutes.search, builder: (context, state) => const SearchScreen()),
       ],
     ),
@@ -157,6 +163,7 @@ class _MainShellState extends ConsumerState<_MainShell> {
     AppRoutes.homeIndex,
     AppRoutes.library,
     AppRoutes.playlists,
+    AppRoutes.online,
     AppRoutes.search,
   ];
 

@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:go_router/go_router.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_dimensions.dart';
@@ -114,6 +115,14 @@ class _MiniArt extends StatelessWidget {
 
   Widget _buildImage() {
     if (artPath != null && artPath!.isNotEmpty) {
+      if (artPath!.startsWith('http')) {
+        return CachedNetworkImage(
+          imageUrl: artPath!,
+          fit: BoxFit.cover,
+          placeholder: (_, __) => _placeholder(),
+          errorWidget: (_, __, ___) => _placeholder(),
+        );
+      }
       return Image.file(
         File(artPath!),
         fit: BoxFit.cover,

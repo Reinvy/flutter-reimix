@@ -9,6 +9,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_dimensions.dart';
@@ -231,11 +232,18 @@ class _FocusModeScreenState extends ConsumerState<FocusModeScreen> with TickerPr
               Positioned.fill(
                 child: ImageFiltered(
                   imageFilter: ColorFilter.mode(Colors.black.withAlpha(160), BlendMode.darken),
-                  child: Image.file(
-                    File(song!.albumArtPath!),
-                    fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) => const SizedBox(),
-                  ),
+                  child: song!.albumArtPath!.startsWith('http')
+                      ? CachedNetworkImage(
+                          imageUrl: song.albumArtPath!,
+                          fit: BoxFit.cover,
+                          placeholder: (_, __) => const SizedBox(),
+                          errorWidget: (_, __, ___) => const SizedBox(),
+                        )
+                      : Image.file(
+                          File(song.albumArtPath!),
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) => const SizedBox(),
+                        ),
                 ),
               ),
 
@@ -258,13 +266,22 @@ class _FocusModeScreenState extends ConsumerState<FocusModeScreen> with TickerPr
                   if (song?.albumArtPath != null)
                     ClipRRect(
                       borderRadius: BorderRadius.circular(AppDimensions.radiusCard),
-                      child: Image.file(
-                        File(song!.albumArtPath!),
-                        width: 160,
-                        height: 160,
-                        fit: BoxFit.cover,
-                        errorBuilder: (_, __, ___) => _artPlaceholder(accent),
-                      ),
+                      child: song!.albumArtPath!.startsWith('http')
+                          ? CachedNetworkImage(
+                              imageUrl: song.albumArtPath!,
+                              width: 160,
+                              height: 160,
+                              fit: BoxFit.cover,
+                              placeholder: (_, __) => _artPlaceholder(accent),
+                              errorWidget: (_, __, ___) => _artPlaceholder(accent),
+                            )
+                          : Image.file(
+                              File(song.albumArtPath!),
+                              width: 160,
+                              height: 160,
+                              fit: BoxFit.cover,
+                              errorBuilder: (_, __, ___) => _artPlaceholder(accent),
+                            ),
                     )
                   else
                     _artPlaceholder(accent),
