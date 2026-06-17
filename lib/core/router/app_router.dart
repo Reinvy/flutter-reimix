@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import '../constants/app_dimensions.dart';
 import '../../core/errors/app_exceptions.dart';
 import '../../main.dart' show libraryWasRebuilt;
 import '../../presentation/providers/mood_provider.dart';
@@ -26,7 +25,6 @@ import '../../presentation/widgets/pulse_ripple_overlay.dart';
 import '../../presentation/widgets/rain_overlay.dart';
 import '../../presentation/widgets/sakura_overlay.dart';
 import '../../presentation/widgets/star_overlay.dart';
-import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import '../theme/mood_theme.dart';
 
 /// Named route constants

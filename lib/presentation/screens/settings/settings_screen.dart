@@ -1,4 +1,3 @@
-import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
@@ -485,7 +484,6 @@ class _MoodCapsuleButton extends StatelessWidget {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final moodColors = MoodTheme.of(mood);
-    final moodBg = moodColors.backgroundFor(Theme.of(context).brightness);
     final moodAccent = moodColors.accent;
 
     return AnimatedScale(

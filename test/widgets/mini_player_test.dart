@@ -27,17 +27,6 @@ class _TestShell extends StatelessWidget {
   Widget build(BuildContext context) => const MiniPlayer();
 }
 
-Widget _wrapWithPlayer(MockReimixAudioHandler handler) {
-  final playbackSubject = BehaviorSubject<PlaybackState>.seeded(PlaybackState());
-  when(() => handler.positionStream).thenAnswer((_) => const Stream.empty());
-  when(() => handler.playingStream).thenAnswer((_) => const Stream.empty());
-  when(() => handler.playbackState).thenAnswer((_) => playbackSubject);
-
-  return ProviderScope(
-    overrides: [audioHandlerProvider.overrideWithValue(handler)],
-    child: MaterialApp.router(routerConfig: _router),
-  );
-}
 
 void main() {
   late MockReimixAudioHandler mockHandler;
