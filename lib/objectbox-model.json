@@ -1,0 +1,216 @@
+{
+  "_note1": "KEEP THIS FILE! Check it into a version control system (VCS) like git.",
+  "_note2": "ObjectBox manages crucial IDs for your object model. See docs for details.",
+  "_note3": "If you have VCS merge conflicts, you must resolve them according to ObjectBox docs.",
+  "entities": [
+    {
+      "id": "1:345115524638201753",
+      "lastPropertyId": "10:5975162044311824273",
+      "name": "AppSettings",
+      "properties": [
+        {
+          "id": "1:3361773200865013054",
+          "name": "id",
+          "type": 6,
+          "flags": 1
+        },
+        {
+          "id": "2:3821400600328203803",
+          "name": "themeMode",
+          "type": 9
+        },
+        {
+          "id": "3:1351676073904694037",
+          "name": "activeMood",
+          "type": 9
+        },
+        {
+          "id": "4:1290565645057537777",
+          "name": "sakuraModeEnabled",
+          "type": 1
+        },
+        {
+          "id": "5:2197451127930519167",
+          "name": "equalizerEnabled",
+          "type": 1
+        },
+        {
+          "id": "6:1676419710100716301",
+          "name": "sleepTimerMinutes",
+          "type": 6
+        },
+        {
+          "id": "7:1268683211930417928",
+          "name": "volumeLevel",
+          "type": 8
+        },
+        {
+          "id": "8:7779300936091592434",
+          "name": "repeatMode",
+          "type": 9
+        },
+        {
+          "id": "9:8801270463438364823",
+          "name": "shuffleEnabled",
+          "type": 1
+        },
+        {
+          "id": "10:5975162044311824273",
+          "name": "onboardingComplete",
+          "type": 1
+        }
+      ],
+      "relations": []
+    },
+    {
+      "id": "2:5767862606543212127",
+      "lastPropertyId": "8:1438113582560312819",
+      "name": "PlaylistModel",
+      "properties": [
+        {
+          "id": "1:2654343814812882999",
+          "name": "id",
+          "type": 6,
+          "flags": 1
+        },
+        {
+          "id": "2:342615998144754483",
+          "name": "name",
+          "type": 9
+        },
+        {
+          "id": "3:8374259363042537581",
+          "name": "coverImagePath",
+          "type": 9
+        },
+        {
+          "id": "4:8705248288966875418",
+          "name": "createdAt",
+          "type": 10
+        },
+        {
+          "id": "5:8809752231158852330",
+          "name": "updatedAt",
+          "type": 10
+        },
+        {
+          "id": "6:4029152823097042905",
+          "name": "isSmartPlaylist",
+          "type": 1
+        },
+        {
+          "id": "7:8623788768987699127",
+          "name": "smartPlaylistType",
+          "type": 9
+        },
+        {
+          "id": "8:1438113582560312819",
+          "name": "songOrderRaw",
+          "type": 9
+        }
+      ],
+      "relations": [
+        {
+          "id": "1:399750363943647580",
+          "name": "songs",
+          "targetId": "3:5057035137856442187"
+        }
+      ]
+    },
+    {
+      "id": "3:5057035137856442187",
+      "lastPropertyId": "15:6426577670695010055",
+      "name": "SongModel",
+      "properties": [
+        {
+          "id": "1:172610831957774495",
+          "name": "id",
+          "type": 6,
+          "flags": 1
+        },
+        {
+          "id": "2:3328251537787421237",
+          "name": "filePath",
+          "type": 9
+        },
+        {
+          "id": "3:8313596451425087519",
+          "name": "title",
+          "type": 9
+        },
+        {
+          "id": "4:135125333179760127",
+          "name": "artist",
+          "type": 9
+        },
+        {
+          "id": "5:2330125034392154819",
+          "name": "album",
+          "type": 9
+        },
+        {
+          "id": "6:2433111918665491815",
+          "name": "genre",
+          "type": 9
+        },
+        {
+          "id": "7:2438878887876679752",
+          "name": "year",
+          "type": 6
+        },
+        {
+          "id": "8:9136700943124143590",
+          "name": "trackNumber",
+          "type": 6
+        },
+        {
+          "id": "9:3330805557644734875",
+          "name": "durationMs",
+          "type": 6
+        },
+        {
+          "id": "10:4513888963812034284",
+          "name": "albumArtPath",
+          "type": 9
+        },
+        {
+          "id": "11:8162216670038673537",
+          "name": "isFavorite",
+          "type": 1
+        },
+        {
+          "id": "12:6351160390115178392",
+          "name": "playCount",
+          "type": 6
+        },
+        {
+          "id": "13:6978144647976684782",
+          "name": "lastPlayedAt",
+          "type": 10
+        },
+        {
+          "id": "14:5622756046102456118",
+          "name": "totalListenedMs",
+          "type": 6
+        },
+        {
+          "id": "15:6426577670695010055",
+          "name": "dateAdded",
+          "type": 10
+        }
+      ],
+      "relations": []
+    }
+  ],
+  "lastEntityId": "3:5057035137856442187",
+  "lastIndexId": "0:0",
+  "lastRelationId": "1:399750363943647580",
+  "lastSequenceId": "0:0",
+  "modelVersion": 5,
+  "modelVersionParserMinimum": 5,
+  "retiredEntityUids": [],
+  "retiredIndexUids": [],
+  "retiredPropertyUids": [],
+  "retiredRelationUids": [],
+  "version": 1
+}

@@ -1,0 +1,16 @@
+# key.properties template
+#
+# Copy this file to android/key.properties and fill in real values.
+# NEVER commit android/key.properties to version control — it is git-ignored.
+#
+# Generate a keystore with:
+#   keytool -genkey -v -keystore reimix-release.jks \
+#           -keyalg RSA -keysize 2048 -validity 10000 \
+#           -alias reimix
+#
+# Then fill in the values below:
+
+storeFile=../reimix-release.jks
+storePassword=REPLACE_WITH_STORE_PASSWORD
+keyAlias=reimix
+keyPassword=REPLACE_WITH_KEY_PASSWORD
