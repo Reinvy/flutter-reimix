@@ -8,6 +8,7 @@ import '../../data/datasources/audio/audio_handler.dart';
 import '../../data/repositories_impl/stats_repository_impl.dart';
 import '../../domain/entities/song.dart';
 import '../../main.dart' show audioHandler, objectBox;
+import 'library_provider.dart';
 
 // ── Enums ─────────────────────────────────────────────────────────────────────
 
@@ -26,6 +27,8 @@ class PlayerState {
   final ShuffleMode shuffleMode;
   final RepeatMode repeatMode;
   final double volume;
+  final double speed;
+  final Duration? sleepTimeLeft;
 
   const PlayerState({
     this.currentSong,
@@ -36,6 +39,8 @@ class PlayerState {
     this.shuffleMode = ShuffleMode.off,
     this.repeatMode = RepeatMode.off,
     this.volume = 1.0,
+    this.speed = 1.0,
+    this.sleepTimeLeft,
   });
 
   PlayerState copyWith({
@@ -47,6 +52,9 @@ class PlayerState {
     ShuffleMode? shuffleMode,
     RepeatMode? repeatMode,
     double? volume,
+    double? speed,
+    Duration? sleepTimeLeft,
+    bool clearSleepTimer = false,
   }) {
     return PlayerState(
       currentSong: currentSong ?? this.currentSong,
@@ -57,6 +65,8 @@ class PlayerState {
       shuffleMode: shuffleMode ?? this.shuffleMode,
       repeatMode: repeatMode ?? this.repeatMode,
       volume: volume ?? this.volume,
+      speed: speed ?? this.speed,
+      sleepTimeLeft: clearSleepTimer ? null : (sleepTimeLeft ?? this.sleepTimeLeft),
     );
   }
 }
@@ -66,14 +76,16 @@ class PlayerState {
 /// Bridges [ReimixAudioHandler] streams with Riverpod state.
 class PlayerNotifier extends StateNotifier<PlayerState> {
   final ReimixAudioHandler _handler;
+  final Ref _ref;
   late final StreamSubscription<Duration> _positionSub;
   late final StreamSubscription<bool> _playingSub;
   late final StreamSubscription<PlaybackState> _playbackSub;
+  Timer? _sleepTimer;
 
   /// Guards against recording the same song multiple times per queue session.
   final _recordedSongs = <int>{};
 
-  PlayerNotifier(this._handler) : super(const PlayerState()) {
+  PlayerNotifier(this._handler, this._ref) : super(const PlayerState()) {
     _positionSub = _handler.positionStream.listen((pos) {
       state = state.copyWith(position: pos);
       _checkListenThreshold(pos);
@@ -91,6 +103,7 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
         isPlaying: pb.playing,
         isLoading: loading,
         position: pb.updatePosition,
+        speed: pb.speed,
       );
     });
   }
@@ -113,6 +126,7 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
     _positionSub.cancel();
     _playingSub.cancel();
     _playbackSub.cancel();
+    _sleepTimer?.cancel();
     super.dispose();
   }
 
@@ -172,6 +186,63 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
     );
     state = state.copyWith(repeatMode: next);
   }
+
+  // ── Volume & Speed ──────────────────────────────────────────────────────────
+
+  Future<void> setVolume(double volume) async {
+    await _handler.setVolume(volume);
+    state = state.copyWith(volume: volume);
+  }
+
+  Future<void> setSpeed(double speed) async {
+    await _handler.setSpeed(speed);
+    state = state.copyWith(speed: speed);
+  }
+
+  // ── Queue Management ────────────────────────────────────────────────────────
+
+  Future<void> removeFromQueue(int index) async {
+    await _handler.removeQueueItemAt(index);
+    state = state.copyWith(
+      currentSong: _handler.currentSong,
+      queue: _handler.currentQueue,
+    );
+  }
+
+  // ── Sleep Timer ────────────────────────────────────────────────────────────
+
+  void startSleepTimer(Duration duration) {
+    _sleepTimer?.cancel();
+    state = state.copyWith(sleepTimeLeft: duration);
+    _sleepTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      final left = state.sleepTimeLeft;
+      if (left == null || left.inSeconds <= 1) {
+        timer.cancel();
+        _sleepTimer = null;
+        state = state.copyWith(clearSleepTimer: true);
+        pause();
+      } else {
+        state = state.copyWith(sleepTimeLeft: left - const Duration(seconds: 1));
+      }
+    });
+  }
+
+  void cancelSleepTimer() {
+    _sleepTimer?.cancel();
+    _sleepTimer = null;
+    state = state.copyWith(clearSleepTimer: true);
+  }
+
+  // ── Favorite Toggle ────────────────────────────────────────────────────────
+
+  Future<void> toggleFavorite(Song song) async {
+    final updated = await _ref.read(songRepositoryProvider).toggleFavorite(song.id);
+    state = state.copyWith(
+      currentSong: state.currentSong?.id == song.id ? updated : state.currentSong,
+      queue: state.queue.map((s) => s.id == song.id ? updated : s).toList(),
+    );
+    _ref.invalidate(libraryProvider);
+  }
 }
 
 // ── Provider ──────────────────────────────────────────────────────────────────
@@ -179,7 +250,7 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
 final audioHandlerProvider = Provider<ReimixAudioHandler>((_) => audioHandler);
 
 final playerProvider = StateNotifierProvider<PlayerNotifier, PlayerState>((ref) {
-  return PlayerNotifier(ref.read(audioHandlerProvider));
+  return PlayerNotifier(ref.read(audioHandlerProvider), ref);
 });
 
 /// Stream of audio playback errors from [ReimixAudioHandler].

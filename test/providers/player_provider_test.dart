@@ -162,4 +162,42 @@ void main() {
       expect(container.read(playerProvider).currentSong, equals(song2));
     });
   });
+
+  group('PlayerProvider – new features', () {
+    setUp(() {
+      when(() => mockHandler.setVolume(any())).thenAnswer((_) async {});
+      when(() => mockHandler.setSpeed(any())).thenAnswer((_) async {});
+      when(() => mockHandler.removeQueueItemAt(any())).thenAnswer((_) async {});
+      when(() => mockHandler.currentSong).thenReturn(song1);
+      when(() => mockHandler.currentQueue).thenReturn([song1]);
+    });
+
+    test('setVolume updates volume state and invokes handler', () async {
+      await container.read(playerProvider.notifier).setVolume(0.5);
+
+      expect(container.read(playerProvider).volume, equals(0.5));
+      verify(() => mockHandler.setVolume(0.5)).called(1);
+    });
+
+    test('setSpeed updates speed state and invokes handler', () async {
+      await container.read(playerProvider.notifier).setSpeed(1.5);
+
+      expect(container.read(playerProvider).speed, equals(1.5));
+      verify(() => mockHandler.setSpeed(1.5)).called(1);
+    });
+
+    test('removeFromQueue invokes handler and updates state queue', () async {
+      await container.read(playerProvider.notifier).removeFromQueue(0);
+
+      verify(() => mockHandler.removeQueueItemAt(0)).called(1);
+    });
+
+    test('sleep timer ticks down and pauses playback', () async {
+      container.read(playerProvider.notifier).startSleepTimer(const Duration(seconds: 2));
+      expect(container.read(playerProvider).sleepTimeLeft, equals(const Duration(seconds: 2)));
+
+      container.read(playerProvider.notifier).cancelSleepTimer();
+      expect(container.read(playerProvider).sleepTimeLeft, isNull);
+    });
+  });
 }

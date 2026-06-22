@@ -219,6 +219,50 @@ class ReimixAudioHandler extends BaseAudioHandler with SeekHandler {
     await super.setRepeatMode(repeatMode);
   }
 
+  Future<void> setVolume(double volume) => _player.setVolume(volume);
+
+  @override
+  Future<void> setSpeed(double speed) async {
+    await _player.setSpeed(speed);
+    await super.setSpeed(speed);
+  }
+
+  Future<void> removeQueueItemAt(int index) async {
+    if (index < 0 || index >= _queue.length) return;
+    if (_queue.length == 1) {
+      await stop();
+      return;
+    }
+
+    final currentPlayingRemoved = (index == _currentIndex);
+    _queue.removeAt(index);
+
+    if (currentPlayingRemoved) {
+      if (_currentIndex >= _queue.length) {
+        _currentIndex = _queue.length - 1;
+      }
+      final song = _queue[_currentIndex];
+      mediaItem.add(song.toMediaItem());
+      try {
+        final source = await _createAudioSource(song);
+        await _player.setAudioSource(source);
+        if (_player.playing) {
+          await _player.play();
+        }
+      } catch (e) {
+        _errorController.add(
+          AudioException(
+            'Cannot play "${song.title}" — file may have been moved or deleted.',
+            cause: e,
+          ),
+        );
+      }
+    } else if (index < _currentIndex) {
+      _currentIndex--;
+    }
+  }
+
+
   // ── Convenience streams ─────────────────────────────────────────────────────
 
   Song? get currentSong => _queue.isNotEmpty ? _queue[_currentIndex] : null;

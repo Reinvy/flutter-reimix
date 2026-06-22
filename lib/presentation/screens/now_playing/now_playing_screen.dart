@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 import 'dart:math' as math;
 
@@ -15,6 +16,7 @@ import '../../../core/constants/app_text_styles.dart';
 import '../../../domain/entities/song.dart';
 import '../../providers/player_provider.dart';
 import '../../widgets/song_list_tile.dart';
+import '../../widgets/glassmorphic_card.dart';
 
 // ── Now Playing Screen ────────────────────────────────────────────────────────
 
@@ -58,8 +60,8 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> with Ticker
 
     _visualizerController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 600),
-    )..repeat(reverse: true);
+      duration: const Duration(milliseconds: 1000),
+    )..repeat();
   }
 
   @override
@@ -103,10 +105,6 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> with Ticker
     }
   }
 
-  void _onFavoriteTap(Song song) {
-    _heartController.forward(from: 0);
-  }
-
   @override
   Widget build(BuildContext context) {
     final playerState = ref.watch(playerProvider);
@@ -116,13 +114,6 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> with Ticker
     // Update dominant color when song changes
     if (song != null) {
       _updateDominantColor(song.albumArtPath);
-    }
-
-    // Control rotation based on play state
-    if (playerState.isPlaying) {
-      if (!_rotationController.isAnimating) _rotationController.repeat();
-    } else {
-      _rotationController.stop();
     }
 
     if (song == null) {
@@ -162,33 +153,122 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> with Ticker
             _BlurredBackground(artPath: song.albumArtPath, gradient: gradient),
             // ── Safe area content ─────────────────────────────────────────
             SafeArea(
-              child: Column(
-                children: [
-                  _buildTopBar(context, isDark),
-                  const SizedBox(height: AppDimensions.sp16),
-                  // Tab-driven content area
-                  Expanded(
-                    child: _currentTab == 0
-                        ? _buildArtView(playerState, song, isDark)
-                        : _currentTab == 1
-                        ? _LyricsView(song: song, position: playerState.position)
-                        : _VisualizerView(
-                            isPlaying: playerState.isPlaying,
-                            controller: _visualizerController,
-                            accentColor: _dominantColor,
-                          ),
-                  ),
-                  _buildTabSwitcher(isDark),
-                  const SizedBox(height: AppDimensions.sp8),
-                  // Controls panel
-                  _buildControlsPanel(context, playerState, song, isDark),
-                  const SizedBox(height: AppDimensions.sp24),
-                ],
+              child: OrientationBuilder(
+                builder: (context, orientation) {
+                  final isLandscape = orientation == Orientation.landscape;
+                  if (isLandscape) {
+                    return _buildLandscapeLayout(context, playerState, song, isDark);
+                  } else {
+                    return _buildPortraitLayout(context, playerState, song, isDark);
+                  }
+                },
               ),
             ),
           ],
         ),
       ),
+    );
+  }
+
+  // ── Layout builders ────────────────────────────────────────────────────────
+
+  Widget _buildPortraitLayout(
+    BuildContext context,
+    PlayerState playerState,
+    Song song,
+    bool isDark,
+  ) {
+    return Column(
+      children: [
+        _buildTopBar(context, isDark),
+        const SizedBox(height: AppDimensions.sp8),
+        // Tab-driven content area
+        Expanded(
+          child: _currentTab == 0
+              ? _buildArtView(playerState, song, isDark)
+              : _currentTab == 1
+                  ? _LyricsView(song: song, position: playerState.position)
+                  : _VisualizerView(
+                      isPlaying: playerState.isPlaying,
+                      controller: _visualizerController,
+                      accentColor: _dominantColor,
+                    ),
+        ),
+        _buildTabSwitcher(isDark),
+        const SizedBox(height: AppDimensions.sp12),
+        // Controls panel
+        _buildControlsPanel(context, playerState, song, isDark),
+        const SizedBox(height: AppDimensions.sp16),
+      ],
+    );
+  }
+
+  Widget _buildLandscapeLayout(
+    BuildContext context,
+    PlayerState playerState,
+    Song song,
+    bool isDark,
+  ) {
+    return Column(
+      children: [
+        _buildTopBar(context, isDark),
+        Expanded(
+          child: Row(
+            children: [
+              // Left Column: Album Art or Visualizer/Lyrics if currentTab != 0
+              Expanded(
+                flex: 5,
+                child: Center(
+                  child: SingleChildScrollView(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        AlbumArtCard(
+                          key: ValueKey(song.id),
+                          artPath: song.albumArtPath,
+                          isPlaying: playerState.isPlaying,
+                          accentColor: _dominantColor,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+              // Right Column: Lyrics/Visualizer (if currentTab != 0) + controls
+              Expanded(
+                flex: 6,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: AppDimensions.sp16),
+                  child: Column(
+                    children: [
+                      _buildTabSwitcher(isDark),
+                      const SizedBox(height: AppDimensions.sp8),
+                      Expanded(
+                        child: _currentTab == 0
+                            ? Center(
+                                child: Text(
+                                  "Now Playing",
+                                  style: AppTextStyles.headlineMedium(color: Colors.white),
+                                ),
+                              )
+                            : _currentTab == 1
+                                ? _LyricsView(song: song, position: playerState.position)
+                                : _VisualizerView(
+                                    isPlaying: playerState.isPlaying,
+                                    controller: _visualizerController,
+                                    accentColor: _dominantColor,
+                                  ),
+                      ),
+                      const SizedBox(height: AppDimensions.sp8),
+                      _buildControlsPanel(context, playerState, song, isDark),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 
@@ -201,7 +281,7 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> with Ticker
         children: [
           IconButton(
             icon: const FaIcon(FontAwesomeIcons.chevronDown, size: 20),
-            color: isDark ? AppColorsDark.onBackground : Colors.white,
+            color: Colors.white,
             onPressed: () => Navigator.of(context).maybePop(),
           ),
           const Expanded(
@@ -230,22 +310,11 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> with Ticker
 
   Widget _buildArtView(PlayerState playerState, Song song, bool isDark) {
     return Center(
-      child: GestureDetector(
-        onLongPress: () => HapticFeedback.mediumImpact(),
-        child: AnimatedSwitcher(
-          duration: const Duration(milliseconds: 400),
-          transitionBuilder: (child, animation) {
-            return FadeTransition(
-              opacity: animation,
-              child: ScaleTransition(scale: animation, child: child),
-            );
-          },
-          child: RotatingAlbumArt(
-            key: ValueKey(song.id),
-            artPath: song.albumArtPath,
-            rotationController: _rotationController,
-          ),
-        ),
+      child: AlbumArtCard(
+        key: ValueKey(song.id),
+        artPath: song.albumArtPath,
+        isPlaying: playerState.isPlaying,
+        accentColor: _dominantColor,
       ),
     );
   }
@@ -256,32 +325,35 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> with Ticker
     final accentColor = _dominantColor;
     const tabs = ['Art', AppStrings.lyrics, AppStrings.visualizer];
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: AppDimensions.sp32),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: List.generate(tabs.length, (i) {
-          final isSelected = _currentTab == i;
-          return GestureDetector(
-            onTap: () => setState(() => _currentTab = i),
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 250),
-              margin: const EdgeInsets.symmetric(horizontal: 6),
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-              decoration: BoxDecoration(
-                color: isSelected ? accentColor.withAlpha(200) : Colors.white.withAlpha(30),
-                borderRadius: BorderRadius.circular(AppDimensions.radiusChip),
-              ),
-              child: Text(
-                tabs[i],
-                style: TextStyle(
-                  color: Colors.white,
-                  fontWeight: isSelected ? FontWeight.w700 : FontWeight.w400,
-                  fontSize: 13,
+      padding: const EdgeInsets.symmetric(horizontal: AppDimensions.sp8),
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: List.generate(tabs.length, (i) {
+            final isSelected = _currentTab == i;
+            return GestureDetector(
+              onTap: () => setState(() => _currentTab = i),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 250),
+                margin: const EdgeInsets.symmetric(horizontal: 4),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                  color: isSelected ? accentColor.withAlpha(200) : Colors.white.withAlpha(30),
+                  borderRadius: BorderRadius.circular(AppDimensions.radiusChip),
+                ),
+                child: Text(
+                  tabs[i],
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: isSelected ? FontWeight.w700 : FontWeight.w400,
+                    fontSize: 13,
+                  ),
                 ),
               ),
-            ),
-          );
-        }),
+            );
+          }),
+        ),
       ),
     );
   }
@@ -296,131 +368,152 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> with Ticker
   ) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: AppDimensions.screenPaddingH),
-      child: Column(
-        children: [
-          // Song info + favorite
-          Row(
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      song.title,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: AppTextStyles.headlineMedium(color: Colors.white),
-                    ),
-                    Text(
-                      song.artist ?? 'Unknown Artist',
-                      style: AppTextStyles.bodyMedium(color: Colors.white70),
-                    ),
-                  ],
-                ),
-              ),
-              // Favorite button
-              AnimatedBuilder(
-                animation: _heartController,
-                builder: (_, __) {
-                  final scale = 1.0 + _heartController.value * 0.3;
-                  return GestureDetector(
-                    onTap: () => _onFavoriteTap(song),
-                    child: Transform.scale(
-                      scale: scale,
-                      child: FaIcon(
-                        song.isFavorite ? FontAwesomeIcons.solidHeart : FontAwesomeIcons.heart,
-                        color: song.isFavorite ? AppColorsLight.accent : Colors.white70,
-                        size: 24,
+      child: GlassmorphicCard(
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppDimensions.sp16,
+          vertical: AppDimensions.sp12,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Song info + favorite
+            Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        song.title,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: AppTextStyles.titleLarge(color: Colors.white),
                       ),
-                    ),
-                  );
-                },
-              ),
-            ],
-          ),
-          const SizedBox(height: AppDimensions.sp16),
-          // Seekbar
-          _Seekbar(playerState: playerState),
-          const SizedBox(height: AppDimensions.sp8),
-          // Volume slider
-          _VolumeSlider(volume: playerState.volume),
-          const SizedBox(height: AppDimensions.sp16),
-          // Playback controls
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-            children: [
-              // Shuffle
-              IconButton(
-                icon: FaIcon(
-                  FontAwesomeIcons.shuffle,
-                  color: playerState.shuffleMode == ShuffleMode.on
-                      ? AppColorsLight.accent
-                      : Colors.white70,
-                  size: 18,
-                ),
-                onPressed: () => ref.read(playerProvider.notifier).toggleShuffle(),
-              ),
-              // Previous
-              IconButton(
-                icon: const FaIcon(FontAwesomeIcons.backwardStep, color: Colors.white, size: 24),
-                onPressed: () => ref.read(playerProvider.notifier).skipToPrevious(),
-              ),
-              // Play / pause
-              ScaleTransition(
-                scale: _scaleAnim,
-                child: GestureDetector(
-                  onTap: _onPlayPauseTap,
-                  child: Container(
-                    width: 64,
-                    height: 64,
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      shape: BoxShape.circle,
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withAlpha(60),
-                          blurRadius: 16,
-                          offset: const Offset(0, 6),
-                        ),
-                      ],
-                    ),
-                    child: playerState.isLoading
-                        ? const Padding(
-                            padding: EdgeInsets.all(18),
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              color: AppColorsLight.accent,
-                            ),
-                          )
-                        : Center(
-                            child: FaIcon(
-                              playerState.isPlaying ? FontAwesomeIcons.pause : FontAwesomeIcons.play,
-                              color: AppColorsLight.accent,
-                              size: 24,
-                            ),
-                          ),
+                      Text(
+                        song.artist ?? 'Unknown Artist',
+                        style: AppTextStyles.bodyMedium(color: Colors.white70),
+                      ),
+                    ],
                   ),
                 ),
-              ),
-              // Next
-              IconButton(
-                icon: const FaIcon(FontAwesomeIcons.forwardStep, color: Colors.white, size: 24),
-                onPressed: () => ref.read(playerProvider.notifier).skipToNext(),
-              ),
-              // Repeat
-              IconButton(
-                icon: FaIcon(
-                  FontAwesomeIcons.repeat,
-                  color: playerState.repeatMode != RepeatMode.off
-                      ? AppColorsLight.accent
-                      : Colors.white70,
-                  size: 18,
+                // Favorite button
+                AnimatedBuilder(
+                  animation: _heartController,
+                  builder: (_, __) {
+                    final scale = 1.0 + _heartController.value * 0.3;
+                    return GestureDetector(
+                      onTap: () {
+                        _heartController.forward(from: 0);
+                        ref.read(playerProvider.notifier).toggleFavorite(song);
+                      },
+                      child: Transform.scale(
+                        scale: scale,
+                        child: FaIcon(
+                          song.isFavorite ? FontAwesomeIcons.solidHeart : FontAwesomeIcons.heart,
+                          color: song.isFavorite ? AppColorsLight.accent : Colors.white70,
+                          size: 22,
+                        ),
+                      ),
+                    );
+                  },
                 ),
-                onPressed: () => ref.read(playerProvider.notifier).cycleRepeatMode(),
-              ),
-            ],
-          ),
-        ],
+              ],
+            ),
+            const SizedBox(height: AppDimensions.sp8),
+            // Seekbar
+            _Seekbar(playerState: playerState),
+            const SizedBox(height: AppDimensions.sp4),
+            // Volume, Speed, and Sleep Timer controls row
+            Row(
+              children: [
+                Expanded(
+                  child: _VolumeSlider(volume: playerState.volume),
+                ),
+                const SizedBox(width: AppDimensions.sp12),
+                _SpeedSelector(speed: playerState.speed),
+                const SizedBox(width: AppDimensions.sp4),
+                _SleepTimerButton(sleepTimeLeft: playerState.sleepTimeLeft),
+              ],
+            ),
+            const SizedBox(height: AppDimensions.sp8),
+            // Playback controls
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                // Shuffle
+                IconButton(
+                  icon: FaIcon(
+                    FontAwesomeIcons.shuffle,
+                    color: playerState.shuffleMode == ShuffleMode.on
+                        ? AppColorsLight.accent
+                        : Colors.white70,
+                    size: 16,
+                  ),
+                  onPressed: () => ref.read(playerProvider.notifier).toggleShuffle(),
+                ),
+                // Previous
+                IconButton(
+                  icon: const FaIcon(FontAwesomeIcons.backwardStep, color: Colors.white, size: 20),
+                  onPressed: () => ref.read(playerProvider.notifier).skipToPrevious(),
+                ),
+                // Play / pause
+                ScaleTransition(
+                  scale: _scaleAnim,
+                  child: GestureDetector(
+                    onTap: _onPlayPauseTap,
+                    child: Container(
+                      width: 52,
+                      height: 52,
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withAlpha(60),
+                            blurRadius: 12,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      child: playerState.isLoading
+                          ? const Padding(
+                              padding: EdgeInsets.all(14),
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: AppColorsLight.accent,
+                              ),
+                            )
+                          : Center(
+                              child: FaIcon(
+                                playerState.isPlaying ? FontAwesomeIcons.pause : FontAwesomeIcons.play,
+                                color: AppColorsLight.accent,
+                                size: 20,
+                              ),
+                            ),
+                    ),
+                  ),
+                ),
+                // Next
+                IconButton(
+                  icon: const FaIcon(FontAwesomeIcons.forwardStep, color: Colors.white, size: 20),
+                  onPressed: () => ref.read(playerProvider.notifier).skipToNext(),
+                ),
+                // Repeat
+                IconButton(
+                  icon: FaIcon(
+                    FontAwesomeIcons.repeat,
+                    color: playerState.repeatMode != RepeatMode.off
+                        ? AppColorsLight.accent
+                        : Colors.white70,
+                    size: 16,
+                  ),
+                  onPressed: () => ref.read(playerProvider.notifier).cycleRepeatMode(),
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -437,51 +530,102 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> with Ticker
   }
 }
 
-// ── Rotating album art ────────────────────────────────────────────────────────
+// ── Album Art Card ───────────────────────────────────────────────────────────
 
-class RotatingAlbumArt extends StatelessWidget {
+class AlbumArtCard extends StatefulWidget {
   final String? artPath;
-  final AnimationController rotationController;
+  final bool isPlaying;
+  final Color accentColor;
 
-  const RotatingAlbumArt({super.key, this.artPath, required this.rotationController});
+  const AlbumArtCard({
+    super.key,
+    this.artPath,
+    required this.isPlaying,
+    required this.accentColor,
+  });
+
+  @override
+  State<AlbumArtCard> createState() => _AlbumArtCardState();
+}
+
+class _AlbumArtCardState extends State<AlbumArtCard> with SingleTickerProviderStateMixin {
+  late final AnimationController _breathingController;
+  late final Animation<double> _scaleAnim;
+
+  @override
+  void initState() {
+    super.initState();
+    _breathingController = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 3),
+    );
+    _scaleAnim = Tween<double>(begin: 0.96, end: 1.04).animate(
+      CurvedAnimation(parent: _breathingController, curve: Curves.easeInOut),
+    );
+
+    if (widget.isPlaying) {
+      _breathingController.repeat(reverse: true);
+    } else {
+      _breathingController.value = 0.5;
+    }
+  }
+
+  @override
+  void didUpdateWidget(AlbumArtCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.isPlaying != oldWidget.isPlaying) {
+      if (widget.isPlaying) {
+        _breathingController.repeat(reverse: true);
+      } else {
+        _breathingController.animateTo(0.5, duration: const Duration(milliseconds: 500));
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    _breathingController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: rotationController,
-      builder: (_, child) {
-        return Transform.rotate(angle: rotationController.value * 2 * math.pi, child: child);
-      },
+    return ScaleTransition(
+      scale: _scaleAnim,
       child: Container(
         width: AppDimensions.albumArtNowPlayingSize,
         height: AppDimensions.albumArtNowPlayingSize,
         decoration: BoxDecoration(
-          shape: BoxShape.circle,
+          borderRadius: BorderRadius.circular(AppDimensions.radiusAlbumArtNowPlaying),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withAlpha(80),
-              blurRadius: 32,
-              offset: const Offset(0, 12),
+              color: widget.accentColor.withAlpha(120),
+              blurRadius: 36,
+              spreadRadius: 4,
+              offset: const Offset(0, 16),
             ),
           ],
         ),
-        child: ClipOval(child: _buildArt()),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(AppDimensions.radiusAlbumArtNowPlaying),
+          child: _buildArt(),
+        ),
       ),
     );
   }
 
   Widget _buildArt() {
-    if (artPath != null && artPath!.isNotEmpty) {
-      if (artPath!.startsWith('http')) {
+    if (widget.artPath != null && widget.artPath!.isNotEmpty) {
+      if (widget.artPath!.startsWith('http')) {
         return CachedNetworkImage(
-          imageUrl: artPath!,
+          imageUrl: widget.artPath!,
           fit: BoxFit.cover,
           placeholder: (_, __) => _placeholder(),
           errorWidget: (_, __, ___) => _placeholder(),
         );
       }
       return Image.file(
-        File(artPath!),
+        File(widget.artPath!),
         fit: BoxFit.cover,
         errorBuilder: (_, __, ___) => _placeholder(),
       );
@@ -491,9 +635,13 @@ class RotatingAlbumArt extends StatelessWidget {
 
   Widget _placeholder() {
     return Container(
-      color: AppColorsLight.primary,
-      child: const Center(
-        child: FaIcon(FontAwesomeIcons.music, color: AppColorsLight.accent, size: 80),
+      color: widget.accentColor.withAlpha(60),
+      child: Center(
+        child: FaIcon(
+          FontAwesomeIcons.music,
+          color: widget.accentColor,
+          size: 80,
+        ),
       ),
     );
   }
@@ -519,17 +667,17 @@ class _BlurredBackground extends StatelessWidget {
           ImageFiltered(
             imageFilter: ColorFilter.mode(Colors.black.withAlpha(100), BlendMode.darken),
             child: artPath!.startsWith('http')
-              ? CachedNetworkImage(
-                  imageUrl: artPath!,
-                  fit: BoxFit.cover,
-                  placeholder: (_, __) => const SizedBox.shrink(),
-                  errorWidget: (_, __, ___) => const SizedBox.shrink(),
-                )
-              : Image.file(
-                  File(artPath!),
-                  fit: BoxFit.cover,
-                  errorBuilder: (_, __, ___) => const SizedBox.shrink(),
-                ),
+                ? CachedNetworkImage(
+                    imageUrl: artPath!,
+                    fit: BoxFit.cover,
+                    placeholder: (_, __) => const SizedBox.shrink(),
+                    errorWidget: (_, __, ___) => const SizedBox.shrink(),
+                  )
+                : Image.file(
+                    File(artPath!),
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+                  ),
           ),
         // Gradient overlay
         Container(decoration: BoxDecoration(gradient: gradient)),
@@ -562,6 +710,7 @@ class _Seekbar extends ConsumerWidget {
     final sliderValue = total.inMilliseconds > 0 ? pos.inMilliseconds / total.inMilliseconds : 0.0;
 
     return Column(
+      mainAxisSize: MainAxisSize.min,
       children: [
         SliderTheme(
           data: SliderTheme.of(context).copyWith(
@@ -570,7 +719,7 @@ class _Seekbar extends ConsumerWidget {
             thumbColor: Colors.white,
             overlayColor: Colors.white24,
             trackHeight: 3,
-            thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 6),
+            thumbShape: const RoundRoundSliderThumbShape(),
           ),
           child: Slider(
             value: sliderValue.clamp(0.0, 1.0),
@@ -585,13 +734,42 @@ class _Seekbar extends ConsumerWidget {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(_fmt(pos), style: const TextStyle(color: Colors.white70, fontSize: 12)),
-              Text(_fmt(total), style: const TextStyle(color: Colors.white70, fontSize: 12)),
+              Text(_fmt(pos), style: const TextStyle(color: Colors.white70, fontSize: 11)),
+              Text(_fmt(total), style: const TextStyle(color: Colors.white70, fontSize: 11)),
             ],
           ),
         ),
       ],
     );
+  }
+}
+
+class RoundRoundSliderThumbShape extends SliderComponentShape {
+  const RoundRoundSliderThumbShape();
+
+  @override
+  Size getPreferredSize(bool isEnabled, bool isPressed) => const Size(12, 12);
+
+  @override
+  void paint(
+    PaintingContext context,
+    Offset center, {
+    required Animation<double> activationAnimation,
+    required Animation<double> enableAnimation,
+    required bool isDiscrete,
+    required TextPainter labelPainter,
+    required RenderBox parentBox,
+    required SliderThemeData sliderTheme,
+    required TextDirection textDirection,
+    required double value,
+    required double textScaleFactor,
+    required Size sizeWithOverflow,
+  }) {
+    final Canvas canvas = context.canvas;
+    final paint = Paint()
+      ..color = Colors.white
+      ..style = PaintingStyle.fill;
+    canvas.drawCircle(center, 6.0, paint);
   }
 }
 
@@ -606,7 +784,7 @@ class _VolumeSlider extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     return Row(
       children: [
-        const FaIcon(FontAwesomeIcons.volumeLow, color: Colors.white70, size: 14),
+        const FaIcon(FontAwesomeIcons.volumeLow, color: Colors.white70, size: 12),
         Expanded(
           child: SliderTheme(
             data: SliderTheme.of(context).copyWith(
@@ -615,17 +793,105 @@ class _VolumeSlider extends ConsumerWidget {
               thumbColor: Colors.white,
               overlayColor: Colors.white24,
               trackHeight: 2,
-              thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 5),
+              thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 4),
             ),
             child: Slider(
               value: volume.clamp(0.0, 1.0),
               onChanged: (val) {
-                // Volume control — AudioPlayer volume via handler (future enhancement)
+                ref.read(playerProvider.notifier).setVolume(val);
               },
             ),
           ),
         ),
-        const FaIcon(FontAwesomeIcons.volumeHigh, color: Colors.white70, size: 14),
+        const FaIcon(FontAwesomeIcons.volumeHigh, color: Colors.white70, size: 12),
+      ],
+    );
+  }
+}
+
+// ── Speed Selector ───────────────────────────────────────────────────────────
+
+class _SpeedSelector extends ConsumerWidget {
+  final double speed;
+
+  const _SpeedSelector({required this.speed});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return PopupMenuButton<double>(
+      icon: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const FaIcon(FontAwesomeIcons.gaugeHigh, color: Colors.white70, size: 12),
+          const SizedBox(width: 4),
+          Text(
+            '${speed.toStringAsFixed(2)}x',
+            style: const TextStyle(color: Colors.white70, fontSize: 11, fontWeight: FontWeight.bold),
+          ),
+        ],
+      ),
+      onSelected: (val) {
+        ref.read(playerProvider.notifier).setSpeed(val);
+      },
+      itemBuilder: (context) => [0.5, 0.75, 1.0, 1.25, 1.5, 2.0]
+          .map((s) => PopupMenuItem<double>(
+                value: s,
+                child: Text('${s.toStringAsFixed(2)}x'),
+              ))
+          .toList(),
+    );
+  }
+}
+
+// ── Sleep Timer Button ───────────────────────────────────────────────────────
+
+class _SleepTimerButton extends ConsumerWidget {
+  final Duration? sleepTimeLeft;
+
+  const _SleepTimerButton({required this.sleepTimeLeft});
+
+  String _fmtDuration(Duration d) {
+    final m = d.inMinutes.toString().padLeft(2, '0');
+    final s = d.inSeconds.remainder(60).toString().padLeft(2, '0');
+    return '$m:$s';
+  }
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final active = sleepTimeLeft != null;
+    return PopupMenuButton<int>(
+      icon: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          FaIcon(
+            FontAwesomeIcons.clock,
+            color: active ? AppColorsLight.accent : Colors.white70,
+            size: 12,
+          ),
+          const SizedBox(width: 4),
+          Text(
+            active ? _fmtDuration(sleepTimeLeft!) : 'Off',
+            style: TextStyle(
+              color: active ? AppColorsLight.accent : Colors.white70,
+              fontSize: 11,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ],
+      ),
+      onSelected: (val) {
+        if (val == 0) {
+          ref.read(playerProvider.notifier).cancelSleepTimer();
+        } else {
+          ref.read(playerProvider.notifier).startSleepTimer(Duration(minutes: val));
+        }
+      },
+      itemBuilder: (context) => [
+        const PopupMenuItem<int>(value: 5, child: Text('5 Menit')),
+        const PopupMenuItem<int>(value: 15, child: Text('15 Menit')),
+        const PopupMenuItem<int>(value: 30, child: Text('30 Menit')),
+        const PopupMenuItem<int>(value: 60, child: Text('60 Menit')),
+        if (active) const PopupMenuItem<int>(value: 0, child: Text('Batal Timer')),
       ],
     );
   }
@@ -633,25 +899,149 @@ class _VolumeSlider extends ConsumerWidget {
 
 // ── Lyrics view ───────────────────────────────────────────────────────────────
 
-class _LyricsView extends StatelessWidget {
+class _LyricsView extends StatefulWidget {
   final Song song;
   final Duration position;
 
   const _LyricsView({required this.song, required this.position});
 
   @override
+  State<_LyricsView> createState() => _LyricsViewState();
+}
+
+class _LyricsViewState extends State<_LyricsView> {
+  late List<MapEntry<Duration, String>> _lyrics;
+  final ScrollController _scrollController = ScrollController();
+  int _activeIndex = -1;
+
+  @override
+  void initState() {
+    super.initState();
+    _lyrics = _getLyricsForSong(widget.song);
+  }
+
+  @override
+  void didUpdateWidget(_LyricsView oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.song.id != oldWidget.song.id) {
+      _lyrics = _getLyricsForSong(widget.song);
+      _activeIndex = -1;
+    }
+
+    // Find active index
+    int newActive = -1;
+    for (int i = 0; i < _lyrics.length; i++) {
+      if (widget.position >= _lyrics[i].key) {
+        newActive = i;
+      } else {
+        break;
+      }
+    }
+
+    if (newActive != _activeIndex) {
+      setState(() {
+        _activeIndex = newActive;
+      });
+      if (_activeIndex >= 0 && _scrollController.hasClients) {
+        _scrollController.animateTo(
+          _activeIndex * 64.0,
+          duration: const Duration(milliseconds: 400),
+          curve: Curves.easeInOut,
+        );
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  List<MapEntry<Duration, String>> _getLyricsForSong(Song song) {
+    final duration = Duration(milliseconds: song.durationMs);
+    final lines = [
+      "Listening to: ${song.title}",
+      "By: ${song.artist ?? 'Unknown Artist'}",
+      "Let the music play...",
+      "Feel the heartbeat in the rhythm.",
+      "Every chord strikes a memory,",
+      "Every note is a story told.",
+      "Walking down this silent road,",
+      "Where the stars guide our steps.",
+      "Lost inside this beautiful sound,",
+      "No worries, no noise, just peace.",
+      "The melody rises like the morning sun,",
+      "Shining through the grey clouds.",
+      "We drift together in this ocean of sound,",
+      "Feeling the flow, breathing the vibe.",
+      "As the song gently starts to fade,",
+      "The echoes linger in the mind."
+    ];
+
+    final result = <MapEntry<Duration, String>>[];
+    if (duration.inSeconds <= 0) return result;
+
+    final lineCount = lines.length;
+    final interval = duration.inMilliseconds / (lineCount + 1);
+
+    for (int i = 0; i < lineCount; i++) {
+      final ms = (interval * (i + 1)).round();
+      result.add(MapEntry(Duration(milliseconds: ms), lines[i]));
+    }
+    return result;
+  }
+
+  @override
   Widget build(BuildContext context) {
-    // LRC lyrics would normally be loaded from the file's embedded metadata.
-    // Show a friendly placeholder for now.
-    return const Center(
-      child: Text(AppStrings.noLyrics, style: TextStyle(color: Colors.white70, fontSize: 16)),
+    if (_lyrics.isEmpty) {
+      return const Center(
+        child: Text(
+          AppStrings.noLyrics,
+          style: TextStyle(color: Colors.white70, fontSize: 16),
+        ),
+      );
+    }
+
+    return ListView.builder(
+      controller: _scrollController,
+      padding: const EdgeInsets.symmetric(vertical: 100),
+      itemCount: _lyrics.length,
+      itemBuilder: (context, index) {
+        final isActive = index == _activeIndex;
+        final line = _lyrics[index].value;
+
+        return Center(
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 300),
+            padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
+            child: Text(
+              line,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: isActive ? Colors.white : Colors.white30,
+                fontSize: isActive ? 20 : 16,
+                fontWeight: isActive ? FontWeight.w700 : FontWeight.w400,
+                shadows: isActive
+                    ? [
+                        Shadow(
+                          color: Colors.white.withAlpha(128),
+                          blurRadius: 12,
+                        ),
+                      ]
+                    : null,
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 }
 
 // ── Visualizer view ───────────────────────────────────────────────────────────
 
-class _VisualizerView extends StatelessWidget {
+class _VisualizerView extends StatefulWidget {
   final bool isPlaying;
   final AnimationController controller;
   final Color accentColor;
@@ -663,63 +1053,142 @@ class _VisualizerView extends StatelessWidget {
   });
 
   @override
+  State<_VisualizerView> createState() => _VisualizerViewState();
+}
+
+class _VisualizerViewState extends State<_VisualizerView> {
+  final List<Offset> _ripples = [];
+  final List<double> _rippleProgresses = [];
+  late final Timer _timer;
+
+  @override
+  void initState() {
+    super.initState();
+    _timer = Timer.periodic(const Duration(milliseconds: 16), (timer) {
+      if (!mounted) return;
+      bool hasUpdates = false;
+      setState(() {
+        for (int i = 0; i < _rippleProgresses.length; i++) {
+          if (_rippleProgresses[i] < 1.0) {
+            _rippleProgresses[i] += 0.03;
+            hasUpdates = true;
+          }
+        }
+        while (_rippleProgresses.isNotEmpty && _rippleProgresses.first >= 1.0) {
+          _ripples.removeAt(0);
+          _rippleProgresses.removeAt(0);
+        }
+      });
+    });
+  }
+
+  @override
+  void dispose() {
+    _timer.cancel();
+    super.dispose();
+  }
+
+  void _onTapDown(TapDownDetails details) {
+    HapticFeedback.lightImpact();
+    setState(() {
+      _ripples.add(details.localPosition);
+      _rippleProgresses.add(0.0);
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return Center(
-      child: RepaintBoundary(
-        child: AnimatedBuilder(
-          animation: controller,
-          builder: (_, __) {
-            return CustomPaint(
-              size: const Size(double.infinity, 120),
-              painter: _VisualizerPainter(
-                progress: controller.value,
-                isPlaying: isPlaying,
-                color: accentColor,
-              ),
-            );
-          },
+    return GestureDetector(
+      onTapDown: _onTapDown,
+      child: Center(
+        child: RepaintBoundary(
+          child: AnimatedBuilder(
+            animation: widget.controller,
+            builder: (_, __) {
+              return CustomPaint(
+                size: const Size(double.infinity, 160),
+                painter: _FluidWavePainter(
+                  progress: widget.controller.value,
+                  isPlaying: widget.isPlaying,
+                  color: widget.accentColor,
+                  tapRipples: _ripples,
+                  rippleProgresses: _rippleProgresses,
+                ),
+              );
+            },
+          ),
         ),
       ),
     );
   }
 }
 
-class _VisualizerPainter extends CustomPainter {
+class _FluidWavePainter extends CustomPainter {
   final double progress;
   final bool isPlaying;
   final Color color;
+  final List<Offset> tapRipples;
+  final List<double> rippleProgresses;
 
-  const _VisualizerPainter({required this.progress, required this.isPlaying, required this.color});
+  _FluidWavePainter({
+    required this.progress,
+    required this.isPlaying,
+    required this.color,
+    required this.tapRipples,
+    required this.rippleProgresses,
+  });
 
   @override
   void paint(Canvas canvas, Size size) {
-    const barCount = 32;
-    const barSpacing = 3.0;
-    final barWidth = (size.width - (barCount + 1) * barSpacing) / barCount;
-    final paint = Paint()
-      ..color = color.withAlpha(200)
-      ..style = PaintingStyle.fill;
+    const waveCount = 3;
+    final waveColors = [
+      color.withAlpha(160),
+      color.withAlpha(100),
+      color.withAlpha(60),
+    ];
+    final speeds = [1.0, 1.4, 0.7];
+    final heights = [18.0, 12.0, 24.0];
+    final wavelengths = [size.width * 0.8, size.width * 1.2, size.width * 0.6];
 
-    for (int i = 0; i < barCount; i++) {
-      final phase = (i / barCount) * math.pi * 2;
-      final wave = isPlaying
-          ? (0.15 + 0.85 * (0.5 + 0.5 * math.sin(phase + progress * math.pi * 2)))
-          : 0.05;
-      final barHeight = size.height * wave;
-      final x = barSpacing + i * (barWidth + barSpacing);
-      final top = size.height - barHeight;
+    for (int w = 0; w < waveCount; w++) {
+      final paint = Paint()
+        ..color = waveColors[w]
+        ..style = PaintingStyle.fill;
 
-      final rect = RRect.fromRectAndRadius(
-        Rect.fromLTWH(x, top, barWidth, barHeight),
-        const Radius.circular(3),
-      );
-      canvas.drawRRect(rect, paint);
+      final path = Path();
+      path.moveTo(0, size.height);
+
+      final currentSpeed = speeds[w];
+      final currentHeight = isPlaying ? heights[w] : 3.0;
+      final currentWavelength = wavelengths[w];
+
+      for (double x = 0; x <= size.width; x += 4) {
+        final angle = (x / currentWavelength) * 2 * math.pi + (progress * 2 * math.pi * currentSpeed);
+        final y = size.height / 2 + math.sin(angle) * currentHeight;
+        path.lineTo(x, y);
+      }
+
+      path.lineTo(size.width, size.height);
+      path.close();
+      canvas.drawPath(path, paint);
+    }
+
+    for (int i = 0; i < tapRipples.length; i++) {
+      final pos = tapRipples[i];
+      final rProgress = rippleProgresses[i];
+      if (rProgress >= 1.0) continue;
+
+      final ripplePaint = Paint()
+        ..color = color.withAlpha(((1.0 - rProgress) * 255).round())
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 3.0;
+
+      canvas.drawCircle(pos, rProgress * 80.0, ripplePaint);
     }
   }
 
   @override
-  bool shouldRepaint(_VisualizerPainter old) =>
-      old.progress != progress || old.isPlaying != isPlaying;
+  bool shouldRepaint(_FluidWavePainter oldDelegate) => true;
 }
 
 // ── Queue bottom sheet ────────────────────────────────────────────────────────
@@ -751,7 +1220,6 @@ class _QueueSheet extends StatelessWidget {
           ),
           child: Column(
             children: [
-              // Handle
               Container(
                 margin: const EdgeInsets.only(top: AppDimensions.sp12),
                 width: 40,
@@ -793,7 +1261,13 @@ class _QueueSheet extends StatelessWidget {
                               },
                             ),
                             onDismissed: (_) {
-                              // Queue item removal — future enhancement
+                              ref.read(playerProvider.notifier).removeFromQueue(i);
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text('Removed "${song.title}" from queue'),
+                                  duration: const Duration(seconds: 2),
+                                ),
+                              );
                             },
                           );
                         },
@@ -806,3 +1280,4 @@ class _QueueSheet extends StatelessWidget {
     );
   }
 }
+
