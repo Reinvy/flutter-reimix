@@ -5,9 +5,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/errors/app_exceptions.dart';
 import '../../data/datasources/audio/audio_handler.dart';
-import '../../data/repositories_impl/stats_repository_impl.dart';
 import '../../domain/entities/song.dart';
-import '../../main.dart' show audioHandler, objectBox;
+import '../../main.dart' show audioHandler;
 import 'library_provider.dart';
 
 // ── Enums ─────────────────────────────────────────────────────────────────────
@@ -85,6 +84,7 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
   late final StreamSubscription<bool> _playingSub;
   late final StreamSubscription<PlaybackState> _playbackSub;
   late final StreamSubscription<MediaItem?> _mediaItemSub;
+  late final StreamSubscription<List<int>?> _shuffleSub;
   Timer? _sleepTimer;
   double? _originalVolume;
 
@@ -135,6 +135,11 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
         _sleepTimerExpired();
       }
     });
+
+    // Sync queue whenever shuffle order changes
+    _shuffleSub = _handler.shuffleIndicesStream.listen((_) {
+      state = state.copyWith(queue: _handler.currentQueue);
+    });
   }
 
   void _checkListenThreshold(Duration position) {
@@ -144,9 +149,11 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
     final pct = position.inMilliseconds / song.durationMs;
     if (pct >= 0.8) {
       _recordedSongs.add(song.id);
-      StatsRepositoryImpl(
-        objectBox,
-      ).recordListen(songId: song.id, durationMs: (song.durationMs * 0.8).round());
+      // Use the injected stats repository via Ref instead of direct instantiation
+      _ref.read(statsRepositoryProvider).recordListen(
+        songId: song.id,
+        durationMs: (song.durationMs * 0.8).round(),
+      );
     }
   }
 
@@ -156,6 +163,7 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
     _playingSub.cancel();
     _playbackSub.cancel();
     _mediaItemSub.cancel();
+    _shuffleSub.cancel();
     _sleepTimer?.cancel();
     super.dispose();
   }

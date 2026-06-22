@@ -14,6 +14,7 @@ import 'package:objectbox/internal.dart'
 import 'package:objectbox/objectbox.dart' as obx;
 import 'package:objectbox_flutter_libs/objectbox_flutter_libs.dart';
 
+import 'data/models/lyrics_model.dart';
 import 'data/models/play_history_model.dart';
 import 'data/models/playlist_model.dart';
 import 'data/models/song_model.dart';
@@ -25,7 +26,7 @@ final _entities = <obx_int.ModelEntity>[
   obx_int.ModelEntity(
       id: const obx_int.IdUid(1, 345115524638201753),
       name: 'AppSettings',
-      lastPropertyId: const obx_int.IdUid(12, 7082717793105886830),
+      lastPropertyId: const obx_int.IdUid(13, 7860704084997709216),
       flags: 0,
       properties: <obx_int.ModelProperty>[
         obx_int.ModelProperty(
@@ -87,6 +88,11 @@ final _entities = <obx_int.ModelEntity>[
             id: const obx_int.IdUid(12, 7082717793105886830),
             name: 'excludedFoldersRaw',
             type: 9,
+            flags: 0),
+        obx_int.ModelProperty(
+            id: const obx_int.IdUid(13, 7860704084997709216),
+            name: 'audioFocusPause',
+            type: 1,
             flags: 0)
       ],
       relations: <obx_int.ModelRelation>[],
@@ -259,6 +265,40 @@ final _entities = <obx_int.ModelEntity>[
             flags: 0)
       ],
       relations: <obx_int.ModelRelation>[],
+      backlinks: <obx_int.ModelBacklink>[]),
+  obx_int.ModelEntity(
+      id: const obx_int.IdUid(5, 8618726821440492973),
+      name: 'LyricsModel',
+      lastPropertyId: const obx_int.IdUid(5, 4167036300643398846),
+      flags: 0,
+      properties: <obx_int.ModelProperty>[
+        obx_int.ModelProperty(
+            id: const obx_int.IdUid(1, 2016473293501535226),
+            name: 'id',
+            type: 6,
+            flags: 1),
+        obx_int.ModelProperty(
+            id: const obx_int.IdUid(2, 2034938666280642057),
+            name: 'songId',
+            type: 6,
+            flags: 0),
+        obx_int.ModelProperty(
+            id: const obx_int.IdUid(3, 3941639178926228111),
+            name: 'plainText',
+            type: 9,
+            flags: 0),
+        obx_int.ModelProperty(
+            id: const obx_int.IdUid(4, 7794314534801873046),
+            name: 'syncedLrc',
+            type: 9,
+            flags: 0),
+        obx_int.ModelProperty(
+            id: const obx_int.IdUid(5, 4167036300643398846),
+            name: 'fetchedAt',
+            type: 10,
+            flags: 0)
+      ],
+      relations: <obx_int.ModelRelation>[],
       backlinks: <obx_int.ModelBacklink>[])
 ];
 
@@ -297,7 +337,7 @@ Future<obx.Store> openStore(
 obx_int.ModelDefinition getObjectBoxModel() {
   final model = obx_int.ModelInfo(
       entities: _entities,
-      lastEntityId: const obx_int.IdUid(4, 746373441526050355),
+      lastEntityId: const obx_int.IdUid(5, 8618726821440492973),
       lastIndexId: const obx_int.IdUid(1, 3432400812631918064),
       lastRelationId: const obx_int.IdUid(1, 399750363943647580),
       lastSequenceId: const obx_int.IdUid(0, 0),
@@ -324,7 +364,7 @@ obx_int.ModelDefinition getObjectBoxModel() {
           final repeatModeOffset = fbb.writeString(object.repeatMode);
           final excludedFoldersRawOffset =
               fbb.writeString(object.excludedFoldersRaw);
-          fbb.startTable(13);
+          fbb.startTable(14);
           fbb.addInt64(0, object.id);
           fbb.addOffset(1, themeModeOffset);
           fbb.addOffset(2, activeMoodOffset);
@@ -337,6 +377,7 @@ obx_int.ModelDefinition getObjectBoxModel() {
           fbb.addBool(9, object.onboardingComplete);
           fbb.addInt64(10, object.scanMinDurationSeconds);
           fbb.addOffset(11, excludedFoldersRawOffset);
+          fbb.addBool(12, object.audioFocusPause);
           fbb.finish(fbb.endTable());
           return object.id;
         },
@@ -368,7 +409,9 @@ obx_int.ModelDefinition getObjectBoxModel() {
                 const fb.Int64Reader().vTableGet(buffer, rootOffset, 24, 0)
             ..excludedFoldersRaw =
                 const fb.StringReader(asciiOptimization: true)
-                    .vTableGet(buffer, rootOffset, 26, '');
+                    .vTableGet(buffer, rootOffset, 26, '')
+            ..audioFocusPause =
+                const fb.BoolReader().vTableGet(buffer, rootOffset, 28, false);
 
           return object;
         }),
@@ -537,6 +580,47 @@ obx_int.ModelDefinition getObjectBoxModel() {
               const fb.Int64Reader().vTableGet(buffer, rootOffset, 6, 0);
           object.song.attach(store);
           return object;
+        }),
+    LyricsModel: obx_int.EntityDefinition<LyricsModel>(
+        model: _entities[4],
+        toOneRelations: (LyricsModel object) => [],
+        toManyRelations: (LyricsModel object) => {},
+        getId: (LyricsModel object) => object.id,
+        setId: (LyricsModel object, int id) {
+          object.id = id;
+        },
+        objectToFB: (LyricsModel object, fb.Builder fbb) {
+          final plainTextOffset = object.plainText == null
+              ? null
+              : fbb.writeString(object.plainText!);
+          final syncedLrcOffset = object.syncedLrc == null
+              ? null
+              : fbb.writeString(object.syncedLrc!);
+          fbb.startTable(6);
+          fbb.addInt64(0, object.id);
+          fbb.addInt64(1, object.songId);
+          fbb.addOffset(2, plainTextOffset);
+          fbb.addOffset(3, syncedLrcOffset);
+          fbb.addInt64(4, object.fetchedAt.millisecondsSinceEpoch);
+          fbb.finish(fbb.endTable());
+          return object.id;
+        },
+        objectFromFB: (obx.Store store, ByteData fbData) {
+          final buffer = fb.BufferContext(fbData);
+          final rootOffset = buffer.derefObject(0);
+
+          final object = LyricsModel()
+            ..id = const fb.Int64Reader().vTableGet(buffer, rootOffset, 4, 0)
+            ..songId =
+                const fb.Int64Reader().vTableGet(buffer, rootOffset, 6, 0)
+            ..plainText = const fb.StringReader(asciiOptimization: true)
+                .vTableGetNullable(buffer, rootOffset, 8)
+            ..syncedLrc = const fb.StringReader(asciiOptimization: true)
+                .vTableGetNullable(buffer, rootOffset, 10)
+            ..fetchedAt = DateTime.fromMillisecondsSinceEpoch(
+                const fb.Int64Reader().vTableGet(buffer, rootOffset, 12, 0));
+
+          return object;
         })
   };
 
@@ -592,6 +676,10 @@ class AppSettings_ {
   /// See [AppSettings.excludedFoldersRaw].
   static final excludedFoldersRaw =
       obx.QueryStringProperty<AppSettings>(_entities[0].properties[11]);
+
+  /// See [AppSettings.audioFocusPause].
+  static final audioFocusPause =
+      obx.QueryBooleanProperty<AppSettings>(_entities[0].properties[12]);
 }
 
 /// [PlaylistModel] entity fields to define ObjectBox queries.
@@ -713,4 +801,27 @@ class PlayHistoryModel_ {
   /// See [PlayHistoryModel.durationMs].
   static final durationMs =
       obx.QueryIntegerProperty<PlayHistoryModel>(_entities[3].properties[3]);
+}
+
+/// [LyricsModel] entity fields to define ObjectBox queries.
+class LyricsModel_ {
+  /// See [LyricsModel.id].
+  static final id =
+      obx.QueryIntegerProperty<LyricsModel>(_entities[4].properties[0]);
+
+  /// See [LyricsModel.songId].
+  static final songId =
+      obx.QueryIntegerProperty<LyricsModel>(_entities[4].properties[1]);
+
+  /// See [LyricsModel.plainText].
+  static final plainText =
+      obx.QueryStringProperty<LyricsModel>(_entities[4].properties[2]);
+
+  /// See [LyricsModel.syncedLrc].
+  static final syncedLrc =
+      obx.QueryStringProperty<LyricsModel>(_entities[4].properties[3]);
+
+  /// See [LyricsModel.fetchedAt].
+  static final fetchedAt =
+      obx.QueryDateProperty<LyricsModel>(_entities[4].properties[4]);
 }

@@ -3,6 +3,7 @@ import '../../models/song_model.dart';
 import '../../models/playlist_model.dart';
 import '../../models/stats_model.dart';
 import '../../models/play_history_model.dart';
+import '../../models/lyrics_model.dart';
 
 /// Singleton wrapper around the ObjectBox Store.
 /// Call [ObjectBoxDatasource.create()] once at app startup (in main.dart),
@@ -14,12 +15,14 @@ class ObjectBoxDatasource {
   late final Box<PlaylistModel> playlistBox;
   late final Box<AppSettings> settingsBox;
   late final Box<PlayHistoryModel> playHistoryBox;
+  late final Box<LyricsModel> lyricsBox;
 
   ObjectBoxDatasource._create(this.store) {
     songBox = store.box<SongModel>();
     playlistBox = store.box<PlaylistModel>();
     settingsBox = store.box<AppSettings>();
     playHistoryBox = store.box<PlayHistoryModel>();
+    lyricsBox = store.box<LyricsModel>();
   }
 
   static Future<ObjectBoxDatasource> create() async {

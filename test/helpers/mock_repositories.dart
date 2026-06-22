@@ -38,4 +38,7 @@ class MockAppSettingsBox extends Mock implements Box<AppSettings> {}
 /// when(() => mock.playingStream).thenAnswer((_) => const Stream.empty());
 /// when(() => mock.playbackState).thenReturn(BehaviorSubject.seeded(const PlaybackState()));
 /// ```
-class MockReimixAudioHandler extends Mock implements ReimixAudioHandler {}
+class MockReimixAudioHandler extends Mock implements ReimixAudioHandler {
+  @override
+  Stream<List<int>?> get shuffleIndicesStream => const Stream.empty();
+}

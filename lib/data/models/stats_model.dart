@@ -18,6 +18,9 @@ class AppSettings {
   int sleepTimerMinutes = 0;
   double volumeLevel = 1.0;
 
+  /// Whether playback pauses when audio focus is lost (e.g. phone call, another app).
+  bool audioFocusPause = true;
+
   /// 'off' | 'all' | 'one'
   String repeatMode = 'off';
 

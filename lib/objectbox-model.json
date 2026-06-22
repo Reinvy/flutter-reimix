@@ -5,7 +5,7 @@
   "entities": [
     {
       "id": "1:345115524638201753",
-      "lastPropertyId": "12:7082717793105886830",
+      "lastPropertyId": "13:7860704084997709216",
       "name": "AppSettings",
       "properties": [
         {
@@ -68,6 +68,11 @@
           "id": "12:7082717793105886830",
           "name": "excludedFoldersRaw",
           "type": 9
+        },
+        {
+          "id": "13:7860704084997709216",
+          "name": "audioFocusPause",
+          "type": 1
         }
       ],
       "relations": []
@@ -242,9 +247,43 @@
         }
       ],
       "relations": []
+    },
+    {
+      "id": "5:8618726821440492973",
+      "lastPropertyId": "5:4167036300643398846",
+      "name": "LyricsModel",
+      "properties": [
+        {
+          "id": "1:2016473293501535226",
+          "name": "id",
+          "type": 6,
+          "flags": 1
+        },
+        {
+          "id": "2:2034938666280642057",
+          "name": "songId",
+          "type": 6
+        },
+        {
+          "id": "3:3941639178926228111",
+          "name": "plainText",
+          "type": 9
+        },
+        {
+          "id": "4:7794314534801873046",
+          "name": "syncedLrc",
+          "type": 9
+        },
+        {
+          "id": "5:4167036300643398846",
+          "name": "fetchedAt",
+          "type": 10
+        }
+      ],
+      "relations": []
     }
   ],
-  "lastEntityId": "4:746373441526050355",
+  "lastEntityId": "5:8618726821440492973",
   "lastIndexId": "1:3432400812631918064",
   "lastRelationId": "1:399750363943647580",
   "lastSequenceId": "0:0",

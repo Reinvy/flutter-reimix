@@ -1,10 +1,8 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:permission_handler/permission_handler.dart';
 import '../../core/errors/app_exceptions.dart';
+import '../../core/utils/notification_service.dart';
 import '../../main.dart' show libraryWasRebuilt;
 import '../../presentation/providers/mood_provider.dart';
 import '../../presentation/providers/player_provider.dart';
@@ -170,32 +168,6 @@ class _MainShellState extends ConsumerState<_MainShell> {
     AppRoutes.search,
   ];
 
-  final _notifications = FlutterLocalNotificationsPlugin();
-
-  Future<void> _initNotifications() async {
-    const android = AndroidInitializationSettings('@mipmap/ic_launcher');
-    const iosSettings = DarwinInitializationSettings(
-      requestAlertPermission: false,
-      requestBadgePermission: false,
-      requestSoundPermission: false,
-    );
-    const settings = InitializationSettings(android: android, iOS: iosSettings);
-    await _notifications.initialize(settings);
-  }
-
-  Future<void> _showSleepTimerEndedNotification() async {
-    const androidDetails = AndroidNotificationDetails(
-      'reimix_sleep_timer',
-      'Sleep Timer',
-      channelDescription: 'Notifies when the sleep timer ends',
-      importance: Importance.defaultImportance,
-      priority: Priority.defaultPriority,
-    );
-    const iosDetails = DarwinNotificationDetails(presentAlert: true, presentSound: true);
-    const details = NotificationDetails(android: androidDetails, iOS: iosDetails);
-    await _notifications.show(1, 'Reimix', 'Sleep timer ended', details);
-  }
-
   int _selectedIndex(BuildContext context) {
     final location = GoRouterState.of(context).matchedLocation;
     final index = _tabs.indexWhere(
@@ -222,7 +194,9 @@ class _MainShellState extends ConsumerState<_MainShell> {
   @override
   void initState() {
     super.initState();
-    _initNotifications();
+    // Initialise the notification service once for the whole app lifecycle.
+    // This is a no-op if already initialised (singleton guard).
+    NotificationService.instance.init();
     if (libraryWasRebuilt) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
@@ -257,11 +231,13 @@ class _MainShellState extends ConsumerState<_MainShell> {
       });
     });
 
-    // Listen for sleep timer completion globally
+    // Listen for sleep timer completion globally and show a system notification.
     ref.listen<PlayerState>(playerProvider, (prev, next) {
-      final wasActive = (prev?.sleepTimeLeft != null && prev!.sleepTimeLeft! > Duration.zero) || (prev?.sleepAtEndOfSong == true);
+      final wasActive =
+          (prev?.sleepTimeLeft != null && prev!.sleepTimeLeft! > Duration.zero) ||
+          (prev?.sleepAtEndOfSong == true);
       if (wasActive && next.sleepTimeLeft == Duration.zero) {
-        _showSleepTimerEndedNotification();
+        NotificationService.instance.showSleepTimerEnded();
       }
     });
 

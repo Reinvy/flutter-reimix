@@ -262,6 +262,7 @@ class ReimixAudioHandler extends BaseAudioHandler with SeekHandler {
     await super.setSpeed(speed);
   }
 
+  @override
   Future<void> removeQueueItemAt(int index) async {
     if (index < 0 || index >= _queue.length) return;
     if (_queue.length == 1) {
@@ -277,7 +278,22 @@ class ReimixAudioHandler extends BaseAudioHandler with SeekHandler {
 
   Song? get currentSong => _queue.isNotEmpty && _currentIndex < _queue.length ? _queue[_currentIndex] : null;
 
-  List<Song> get currentQueue => List.unmodifiable(_queue);
+  /// Returns songs in the effective playback order.
+  ///
+  /// When shuffle is enabled, just_audio reorders tracks internally via
+  /// [AudioPlayer.effectiveIndices]. We expose those indices here so that
+  /// [PlayerNotifier] can reflect the correct visible queue order.
+  List<Song> get currentQueue {
+    final effective = _player.effectiveIndices;
+    if (effective.length == _queue.length) {
+      return List.unmodifiable(effective.map((i) => _queue[i]).toList());
+    }
+    return List.unmodifiable(_queue);
+  }
+
+  /// Emits whenever the effective shuffle order changes so [PlayerNotifier]
+  /// can update its queue state reactively.
+  Stream<List<int>?> get shuffleIndicesStream => _player.shuffleIndicesStream;
 
   Stream<Duration> get positionStream => _player.positionStream;
 

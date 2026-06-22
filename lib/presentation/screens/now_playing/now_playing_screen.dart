@@ -1,9 +1,6 @@
 import 'dart:async';
 import 'dart:io';
-import 'dart:math' as math;
-
 import 'package:flutter/material.dart' hide RepeatMode;
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:palette_generator/palette_generator.dart';
@@ -17,6 +14,8 @@ import '../../../domain/entities/song.dart';
 import '../../providers/player_provider.dart';
 import '../../widgets/song_list_tile.dart';
 import '../../widgets/glassmorphic_card.dart';
+import '../../widgets/synced_lyrics_view.dart';
+import '../../widgets/now_playing/visualizer_view.dart';
 
 // ── Now Playing Screen ────────────────────────────────────────────────────────
 
@@ -897,171 +896,21 @@ class _SleepTimerButton extends ConsumerWidget {
   }
 }
 
-// ── Lyrics view ───────────────────────────────────────────────────────────────
-
-class _LyricsView extends StatefulWidget {
+class _LyricsView extends StatelessWidget {
   final Song song;
   final Duration position;
 
   const _LyricsView({required this.song, required this.position});
 
   @override
-  State<_LyricsView> createState() => _LyricsViewState();
-}
-
-class _LyricsViewState extends State<_LyricsView> {
-  late List<MapEntry<Duration, String>> _lyrics;
-  final ScrollController _scrollController = ScrollController();
-  int _activeIndex = -1;
-
-  @override
-  void initState() {
-    super.initState();
-    _lyrics = _getLyricsForSong(widget.song);
-  }
-
-  @override
-  void didUpdateWidget(_LyricsView oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (widget.song.id != oldWidget.song.id) {
-      _lyrics = _getLyricsForSong(widget.song);
-      _activeIndex = -1;
-    }
-
-    // Find active index
-    int newActive = -1;
-    for (int i = 0; i < _lyrics.length; i++) {
-      if (widget.position >= _lyrics[i].key) {
-        newActive = i;
-      } else {
-        break;
-      }
-    }
-
-    if (newActive != _activeIndex) {
-      setState(() {
-        _activeIndex = newActive;
-      });
-      if (_activeIndex >= 0 && _scrollController.hasClients) {
-        _scrollController.animateTo(
-          _activeIndex * 64.0,
-          duration: const Duration(milliseconds: 400),
-          curve: Curves.easeInOut,
-        );
-      }
-    }
-  }
-
-  @override
-  void dispose() {
-    _scrollController.dispose();
-    super.dispose();
-  }
-
-  List<MapEntry<Duration, String>> _getLyricsForSong(Song song) {
-    final duration = Duration(milliseconds: song.durationMs);
-    final lines = [
-      "Listening to: ${song.title}",
-      "By: ${song.artist ?? 'Unknown Artist'}",
-      "Let the music play...",
-      "Feel the heartbeat in the rhythm.",
-      "Every chord strikes a memory,",
-      "Every note is a story told.",
-      "Walking down this silent road,",
-      "Where the stars guide our steps.",
-      "Lost inside this beautiful sound,",
-      "No worries, no noise, just peace.",
-      "The melody rises like the morning sun,",
-      "Shining through the grey clouds.",
-      "We drift together in this ocean of sound,",
-      "Feeling the flow, breathing the vibe.",
-      "As the song gently starts to fade,",
-      "The echoes linger in the mind."
-    ];
-
-    final result = <MapEntry<Duration, String>>[];
-    if (duration.inSeconds <= 0) return result;
-
-    final lineCount = lines.length;
-    final interval = duration.inMilliseconds / (lineCount + 1);
-
-    for (int i = 0; i < lineCount; i++) {
-      final ms = (interval * (i + 1)).round();
-      result.add(MapEntry(Duration(milliseconds: ms), lines[i]));
-    }
-    return result;
-  }
-
-  @override
   Widget build(BuildContext context) {
-    if (_lyrics.isEmpty) {
-      return const Center(
-        child: Text(
-          AppStrings.noLyrics,
-          style: TextStyle(color: Colors.white70, fontSize: 16),
-        ),
-      );
-    }
-
-    return ListView.builder(
-      controller: _scrollController,
-      padding: const EdgeInsets.symmetric(vertical: 100),
-      itemCount: _lyrics.length,
-      itemBuilder: (context, index) {
-        final isActive = index == _activeIndex;
-        final line = _lyrics[index].value;
-
-        return Center(
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 300),
-            padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
-            child: Text(
-              line,
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: isActive ? Colors.white : Colors.white30,
-                fontSize: isActive ? 20 : 16,
-                fontWeight: isActive ? FontWeight.w700 : FontWeight.w400,
-                shadows: isActive
-                    ? [
-                        Shadow(
-                          color: Colors.white.withAlpha(128),
-                          blurRadius: 12,
-                        ),
-                      ]
-                    : null,
-              ),
-            ),
-          ),
-        );
-      },
-    );
+    return const SyncedLyricsView();
   }
 }
 
 // ── Visualizer view ───────────────────────────────────────────────────────────
 
-class _VisualizerParticle {
-  double x;
-  double y;
-  double speedY;
-  double size;
-  double opacity;
-  double phase;
-  double driftSpeed;
-
-  _VisualizerParticle({
-    required this.x,
-    required this.y,
-    required this.speedY,
-    required this.size,
-    required this.opacity,
-    required this.phase,
-    required this.driftSpeed,
-  });
-}
-
-class _VisualizerView extends StatefulWidget {
+class _VisualizerView extends StatelessWidget {
   final bool isPlaying;
   final AnimationController controller;
   final Color accentColor;
@@ -1073,199 +922,13 @@ class _VisualizerView extends StatefulWidget {
   });
 
   @override
-  State<_VisualizerView> createState() => _VisualizerViewState();
-}
-
-class _VisualizerViewState extends State<_VisualizerView> {
-  final List<Offset> _ripples = [];
-  final List<double> _rippleProgresses = [];
-  final List<_VisualizerParticle> _particles = [];
-  late final Timer _timer;
-  final math.Random _random = math.Random();
-
-  @override
-  void initState() {
-    super.initState();
-
-    // Initialize particles
-    for (int i = 0; i < 25; i++) {
-      _particles.add(_generateParticle(randomY: true));
-    }
-
-    _timer = Timer.periodic(const Duration(milliseconds: 16), (timer) {
-      if (!mounted) return;
-      setState(() {
-        // Update ripples
-        for (int i = 0; i < _rippleProgresses.length; i++) {
-          if (_rippleProgresses[i] < 1.0) {
-            _rippleProgresses[i] += 0.03;
-          }
-        }
-        while (_rippleProgresses.isNotEmpty && _rippleProgresses.first >= 1.0) {
-          _ripples.removeAt(0);
-          _rippleProgresses.removeAt(0);
-        }
-
-        // Update particles if playing
-        for (int i = 0; i < _particles.length; i++) {
-          final p = _particles[i];
-          if (widget.isPlaying) {
-            p.y -= p.speedY;
-            p.phase += p.driftSpeed;
-            p.x += math.sin(p.phase) * 0.4;
-            p.opacity -= 0.006;
-          } else {
-            // Very slow idle animation
-            p.y -= p.speedY * 0.2;
-            p.phase += p.driftSpeed * 0.2;
-            p.x += math.sin(p.phase) * 0.1;
-            p.opacity -= 0.001;
-          }
-
-          if (p.y < 0 || p.opacity <= 0) {
-            _particles[i] = _generateParticle(randomY: false);
-          }
-        }
-      });
-    });
-  }
-
-  _VisualizerParticle _generateParticle({required bool randomY}) {
-    return _VisualizerParticle(
-      x: _random.nextDouble() * 400.0, // Initial guess, adjusted in painter using size.width
-      y: randomY ? _random.nextDouble() * 160.0 : 160.0,
-      speedY: 0.4 + _random.nextDouble() * 1.2,
-      size: 2.0 + _random.nextDouble() * 5.0,
-      opacity: 0.3 + _random.nextDouble() * 0.7,
-      phase: _random.nextDouble() * math.pi * 2,
-      driftSpeed: 0.02 + _random.nextDouble() * 0.05,
-    );
-  }
-
-  @override
-  void dispose() {
-    _timer.cancel();
-    super.dispose();
-  }
-
-  void _onTapDown(TapDownDetails details) {
-    HapticFeedback.lightImpact();
-    setState(() {
-      _ripples.add(details.localPosition);
-      _rippleProgresses.add(0.0);
-    });
-  }
-
-  @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTapDown: _onTapDown,
-      child: Center(
-        child: RepaintBoundary(
-          child: AnimatedBuilder(
-            animation: widget.controller,
-            builder: (_, __) {
-              return CustomPaint(
-                size: const Size(double.infinity, 160),
-                painter: _FluidWavePainter(
-                  progress: widget.controller.value,
-                  isPlaying: widget.isPlaying,
-                  color: widget.accentColor,
-                  tapRipples: _ripples,
-                  rippleProgresses: _rippleProgresses,
-                  particles: _particles,
-                ),
-              );
-            },
-          ),
-        ),
-      ),
+    return VisualizerView(
+      isPlaying: isPlaying,
+      controller: controller,
+      accentColor: accentColor,
     );
   }
-}
-
-class _FluidWavePainter extends CustomPainter {
-  final double progress;
-  final bool isPlaying;
-  final Color color;
-  final List<Offset> tapRipples;
-  final List<double> rippleProgresses;
-  final List<_VisualizerParticle> particles;
-
-  _FluidWavePainter({
-    required this.progress,
-    required this.isPlaying,
-    required this.color,
-    required this.tapRipples,
-    required this.rippleProgresses,
-    required this.particles,
-  });
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    // Draw particles first (background particles)
-    for (final p in particles) {
-      // Map x position percentage to actual width dynamically
-      final double actualX = (p.x / 400.0) * size.width;
-      final double actualSize = p.size * (isPlaying ? 1.0 : 0.6);
-      
-      final particlePaint = Paint()
-        ..color = color.withAlpha((p.opacity * 255).round())
-        ..style = PaintingStyle.fill;
-      
-      canvas.drawCircle(Offset(actualX, p.y), actualSize, particlePaint);
-    }
-
-    const waveCount = 3;
-    final waveColors = [
-      color.withAlpha(160),
-      color.withAlpha(100),
-      color.withAlpha(60),
-    ];
-    final speeds = [1.0, 1.4, 0.7];
-    final heights = [18.0, 12.0, 24.0];
-    final wavelengths = [size.width * 0.8, size.width * 1.2, size.width * 0.6];
-
-    for (int w = 0; w < waveCount; w++) {
-      final paint = Paint()
-        ..color = waveColors[w]
-        ..style = PaintingStyle.fill;
-
-      final path = Path();
-      path.moveTo(0, size.height);
-
-      final currentSpeed = speeds[w];
-      final currentHeight = isPlaying ? heights[w] : 3.0;
-      final currentWavelength = wavelengths[w];
-
-      for (double x = 0; x <= size.width; x += 4) {
-        final angle = (x / currentWavelength) * 2 * math.pi + (progress * 2 * math.pi * currentSpeed);
-        final y = size.height / 2 + math.sin(angle) * currentHeight;
-        path.lineTo(x, y);
-      }
-
-      path.lineTo(size.width, size.height);
-      path.close();
-      canvas.drawPath(path, paint);
-    }
-
-    // Draw tap ripples on top
-    for (int i = 0; i < tapRipples.length; i++) {
-      final pos = tapRipples[i];
-      final rProgress = rippleProgresses[i];
-      if (rProgress >= 1.0) continue;
-
-      final ripplePaint = Paint()
-        ..color = color.withAlpha(((1.0 - rProgress) * 255).round())
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 3.0;
-
-      canvas.drawCircle(pos, rProgress * 80.0, ripplePaint);
-    }
-  }
-
-  @override
-  bool shouldRepaint(_FluidWavePainter oldDelegate) => true;
 }
 
 // ── Queue bottom sheet ────────────────────────────────────────────────────────

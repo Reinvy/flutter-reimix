@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path_provider/path_provider.dart';
@@ -160,44 +161,53 @@ final downloadQueueProvider = StateNotifierProvider<DownloadQueueNotifier, Map<S
 
 // ── Online Recent Searches Notifier ──────────────────────────────────────────
 
-class OnlineRecentsNotifier extends StateNotifier<List<String>> {
+class OnlineRecentsNotifier extends AsyncNotifier<List<String>> {
   static const _key = 'online_recent_searches';
 
-  OnlineRecentsNotifier() : super([]) {
-    _load();
-  }
-
-  Future<void> _load() async {
-    final prefs = await SharedPreferences.getInstance();
-    state = prefs.getStringList(_key) ?? [];
+  @override
+  FutureOr<List<String>> build() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      return prefs.getStringList(_key) ?? [];
+    } catch (_) {
+      return [];
+    }
   }
 
   Future<void> add(String query) async {
     final q = query.trim();
     if (q.isEmpty) return;
 
-    final updated = [q, ...state.where((item) => item != q)].take(10).toList();
-    state = updated;
+    final current = state.valueOrNull ?? [];
+    final updated = [q, ...current.where((item) => item != q)].take(10).toList();
+    state = AsyncValue.data(updated);
 
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setStringList(_key, updated);
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setStringList(_key, updated);
+    } catch (_) {}
   }
 
   Future<void> remove(String query) async {
-    final updated = state.where((item) => item != query).toList();
-    state = updated;
+    final current = state.valueOrNull ?? [];
+    final updated = current.where((item) => item != query).toList();
+    state = AsyncValue.data(updated);
 
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setStringList(_key, updated);
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setStringList(_key, updated);
+    } catch (_) {}
   }
 
   Future<void> clear() async {
-    state = [];
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.remove(_key);
+    state = const AsyncValue.data([]);
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove(_key);
+    } catch (_) {}
   }
 }
 
-final onlineRecentsProvider = StateNotifierProvider<OnlineRecentsNotifier, List<String>>((ref) {
+final onlineRecentsProvider = AsyncNotifierProvider<OnlineRecentsNotifier, List<String>>(() {
   return OnlineRecentsNotifier();
 });

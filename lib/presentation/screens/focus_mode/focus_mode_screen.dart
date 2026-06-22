@@ -4,10 +4,8 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
-import 'package:permission_handler/permission_handler.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 
@@ -15,44 +13,9 @@ import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_dimensions.dart';
 import '../../../core/constants/app_strings.dart';
 import '../../../core/constants/app_text_styles.dart';
+import '../../../core/utils/notification_service.dart';
+import 'package:permission_handler/permission_handler.dart';
 import '../../providers/player_provider.dart';
-
-// ── Notification helpers ──────────────────────────────────────────────────────
-
-final _notifications = FlutterLocalNotificationsPlugin();
-
-Future<void> _initNotifications() async {
-  const android = AndroidInitializationSettings('@mipmap/ic_launcher');
-  const iosSettings = DarwinInitializationSettings(
-    requestAlertPermission: false,
-    requestBadgePermission: false,
-    requestSoundPermission: false,
-  );
-  const settings = InitializationSettings(android: android, iOS: iosSettings);
-  await _notifications.initialize(settings);
-
-  // Request notification permission at runtime (Android 13+ / iOS)
-  if (Platform.isAndroid) {
-    await Permission.notification.request();
-  } else if (Platform.isIOS) {
-    await _notifications
-        .resolvePlatformSpecificImplementation<IOSFlutterLocalNotificationsPlugin>()
-        ?.requestPermissions(alert: true, badge: false, sound: true);
-  }
-}
-
-Future<void> _showSleepTimerEndedNotification() async {
-  const androidDetails = AndroidNotificationDetails(
-    'reimix_sleep_timer',
-    'Sleep Timer',
-    channelDescription: 'Notifies when the sleep timer ends',
-    importance: Importance.defaultImportance,
-    priority: Priority.defaultPriority,
-  );
-  const iosDetails = DarwinNotificationDetails(presentAlert: true, presentSound: true);
-  const details = NotificationDetails(android: androidDetails, iOS: iosDetails);
-  await _notifications.show(1, 'Reimix', 'Sleep timer ended', details);
-}
 
 // ── Screen ────────────────────────────────────────────────────────────────────
 
@@ -88,7 +51,9 @@ class _FocusModeScreenState extends ConsumerState<FocusModeScreen> with TickerPr
     _fadeCtrl = AnimationController(vsync: this, duration: const Duration(seconds: 10));
     _fadeAnim = CurvedAnimation(parent: _fadeCtrl, curve: Curves.easeInOut);
 
-    _initNotifications();
+    // Notification service is a singleton — safe to call init() here,
+    // it's a no-op if already initialised by _MainShell.
+    NotificationService.instance.init();
   }
 
   @override

@@ -4,7 +4,6 @@ import '../../domain/repositories/stats_repository.dart';
 import '../datasources/local/objectbox_datasource.dart';
 import '../models/play_history_model.dart';
 import '../models/song_model.dart';
-import '../../objectbox.g.dart';
 
 /// Concrete implementation of [StatsRepository] backed by ObjectBox.
 class StatsRepositoryImpl implements StatsRepository {

@@ -127,7 +127,7 @@ class HomeScreen extends ConsumerWidget {
               ),
 
               // ── Mood Carousel ───────────────────────────────────────────────
-              _SectionHeader(title: 'Choose Your Mood'),
+              const _SectionHeader(title: 'Choose Your Mood'),
               SliverToBoxAdapter(
                 child: Padding(
                   padding: const EdgeInsets.only(bottom: AppDimensions.sp24),

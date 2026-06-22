@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:package_info_plus/package_info_plus.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_dimensions.dart';
@@ -13,8 +12,6 @@ import '../../../main.dart' show objectBox;
 import '../../providers/mood_provider.dart';
 import '../../providers/theme_provider.dart';
 import '../../widgets/glassmorphic_card.dart';
-
-const _kAudioFocusKey = 'audio_focus_pause_on_interrupt';
 
 class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({super.key});
@@ -34,7 +31,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   void initState() {
     super.initState();
     _loadPackageInfo();
-    _loadAudioFocusPref();
     _loadScanSettings();
   }
 
@@ -43,6 +39,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     setState(() {
       _scanMinDuration = settings.scanMinDurationSeconds;
       _excludedFolders = List<String>.from(settings.excludedFolders);
+      _audioFocusPause = settings.audioFocusPause;
     });
   }
 
@@ -84,17 +81,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     }
   }
 
-  Future<void> _loadAudioFocusPref() async {
-    final prefs = await SharedPreferences.getInstance();
-    if (mounted) {
-      setState(() => _audioFocusPause = prefs.getBool(_kAudioFocusKey) ?? true);
-    }
-  }
-
-  Future<void> _setAudioFocusPause(bool value) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool(_kAudioFocusKey, value);
-    if (mounted) setState(() => _audioFocusPause = value);
+  void _setAudioFocusPause(bool value) {
+    setState(() => _audioFocusPause = value);
+    final settings = objectBox.getSettings();
+    settings.audioFocusPause = value;
+    objectBox.settingsBox.put(settings);
   }
 
   @override

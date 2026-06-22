@@ -32,8 +32,13 @@ final statsRepositoryProvider = Provider<StatsRepositoryImpl>((ref) {
 /// Call [scan()] to trigger a MediaStore scan and refresh the list.
 class LibraryNotifier extends AsyncNotifier<List<Song>> {
   @override
-  Future<List<Song>> build() {
-    return ref.read(songRepositoryProvider).getAllSongs();
+  Future<List<Song>> build() async {
+    final repo = ref.read(songRepositoryProvider);
+    final subscription = repo.watchAllSongs().listen((songs) {
+      state = AsyncValue.data(songs);
+    });
+    ref.onDispose(subscription.cancel);
+    return repo.getAllSongs();
   }
 
   Future<void> scan() async {
@@ -65,6 +70,28 @@ final recentlyPlayedProvider = FutureProvider<List<Song>>((ref) async {
 final favoritesProvider = FutureProvider<List<Song>>((ref) async {
   final songs = await ref.watch(libraryProvider.future);
   return songs.where((s) => s.isFavorite).take(10).toList();
+});
+
+/// Top played songs (at least 1 listen), sorted by playCount descending.
+final topPlayedProvider = FutureProvider<List<Song>>((ref) async {
+  final songs = await ref.watch(libraryProvider.future);
+  final played = songs.where((s) => s.playCount > 0).toList()
+    ..sort((a, b) => b.playCount.compareTo(a.playCount));
+  return played.take(20).toList();
+});
+
+/// Songs never played.
+final neverPlayedProvider = FutureProvider<List<Song>>((ref) async {
+  final songs = await ref.watch(libraryProvider.future);
+  return songs.where((s) => s.playCount == 0).toList();
+});
+
+/// Songs added within the last 7 days.
+final addedThisWeekProvider = FutureProvider<List<Song>>((ref) async {
+  final songs = await ref.watch(libraryProvider.future);
+  final oneWeekAgo = DateTime.now().subtract(const Duration(days: 7));
+  return songs.where((s) => s.dateAdded.isAfter(oneWeekAgo)).toList()
+    ..sort((a, b) => b.dateAdded.compareTo(a.dateAdded));
 });
 
 /// All albums derived from stored songs.

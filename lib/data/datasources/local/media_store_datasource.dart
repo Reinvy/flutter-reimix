@@ -99,14 +99,37 @@ class MediaStoreDatasource {
 
   /// Inserts only songs whose [filePath] is not yet stored, keeping existing
   /// metadata (favorites, play counts) intact.
+  ///
+  /// Also removes songs from the database that no longer exist on the device,
+  /// but exempts:
+  ///  - Songs prefixed with `youtube://` (online/streamed songs)
+  ///  - Songs stored in the app's documents directory (downloaded files)
   void _mergeIntoDatabase(List<SongModel> incoming) {
     final existing = _db.songBox.getAll();
-    final knownPaths = {for (final s in existing) s.filePath};
+    final incomingPaths = {for (final s in incoming) s.filePath};
 
-    final newSongs = incoming.where((m) => !knownPaths.contains(m.filePath)).toList();
+    // Insert new songs that are not yet in the database
+    final newSongs = incoming.where((m) {
+      return !existing.any((e) => e.filePath == m.filePath);
+    }).toList();
 
     if (newSongs.isNotEmpty) {
       _db.songBox.putMany(newSongs);
+    }
+
+    // Remove songs that were deleted from the device.
+    // Exempt: youtube:// streams and downloaded files (in-app documents dir).
+    final toRemove = existing.where((e) {
+      // Never remove online/streamed songs
+      if (e.filePath.startsWith('youtube://')) return false;
+      // Never remove app-downloaded files
+      if (e.filePath.contains('/Downloads/youtube_')) return false;
+      // Remove if no longer in the scanned set
+      return !incomingPaths.contains(e.filePath);
+    }).toList();
+
+    if (toRemove.isNotEmpty) {
+      _db.songBox.removeMany(toRemove.map((s) => s.id).toList());
     }
   }
 

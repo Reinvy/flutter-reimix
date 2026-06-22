@@ -31,9 +31,17 @@ class StatsScreen extends ConsumerWidget {
   }
 }
 
-class _StatsBody extends StatelessWidget {
+class _StatsBody extends StatefulWidget {
   final ListeningStats stats;
   const _StatsBody({required this.stats});
+
+  @override
+  State<_StatsBody> createState() => _StatsBodyState();
+}
+
+class _StatsBodyState extends State<_StatsBody> {
+  bool _showAllSongs = false;
+  bool _showAllArtists = false;
 
   @override
   Widget build(BuildContext context) {
@@ -41,6 +49,13 @@ class _StatsBody extends StatelessWidget {
     final onBg = isDark ? AppColorsDark.onBackground : AppColorsLight.onBackground;
     final subtext = isDark ? AppColorsDark.subtext : AppColorsLight.subtext;
     final accent = Theme.of(context).colorScheme.tertiary;
+
+    final visibleSongCount = _showAllSongs
+        ? widget.stats.topSongs.length
+        : math.min(widget.stats.topSongs.length, 5);
+    final visibleArtistCount = _showAllArtists
+        ? widget.stats.topArtists.length
+        : math.min(widget.stats.topArtists.length, 5);
 
     return CustomScrollView(
       slivers: [
@@ -66,7 +81,7 @@ class _StatsBody extends StatelessWidget {
                 Expanded(
                   child: _StatCard(
                     label: 'Total Time',
-                    value: _formatTotal(stats.totalListenedMs),
+                    value: _formatTotal(widget.stats.totalListenedMs),
                     icon: FontAwesomeIcons.headphones,
                     accent: accent,
                   ),
@@ -75,7 +90,7 @@ class _StatsBody extends StatelessWidget {
                 Expanded(
                   child: _StatCard(
                     label: 'Streak',
-                    value: '${stats.streak} day${stats.streak == 1 ? '' : 's'}',
+                    value: '${widget.stats.streak} day${widget.stats.streak == 1 ? '' : 's'}',
                     icon: FontAwesomeIcons.fire,
                     accent: Colors.orange,
                   ),
@@ -98,7 +113,7 @@ class _StatsBody extends StatelessWidget {
                 const SizedBox(height: AppDimensions.sp12),
                 SizedBox(
                   height: 160,
-                  child: _BarChart(buckets: stats.weeklyMinutes, accentColor: accent),
+                  child: _BarChart(buckets: widget.stats.weeklyMinutes, accentColor: accent),
                 ),
               ],
             ),
@@ -108,17 +123,30 @@ class _StatsBody extends StatelessWidget {
         const SliverToBoxAdapter(child: SizedBox(height: AppDimensions.sp24)),
 
         // ── Top songs ────────────────────────────────────────────────────────
-        if (stats.topSongs.isNotEmpty) ...[
+        if (widget.stats.topSongs.isNotEmpty) ...[
           SliverPadding(
             padding: const EdgeInsets.symmetric(horizontal: AppDimensions.screenPaddingH),
             sliver: SliverToBoxAdapter(
-              child: Text('Top Songs', style: AppTextStyles.titleMedium(color: onBg)),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text('Top Songs', style: AppTextStyles.titleMedium(color: onBg)),
+                  if (widget.stats.topSongs.length > 5)
+                    TextButton(
+                      onPressed: () => setState(() => _showAllSongs = !_showAllSongs),
+                      child: Text(
+                        _showAllSongs ? 'Show Less' : 'See All',
+                        style: AppTextStyles.labelMedium(color: accent),
+                      ),
+                    ),
+                ],
+              ),
             ),
           ),
           SliverList.builder(
-            itemCount: math.min(stats.topSongs.length, 5),
+            itemCount: visibleSongCount,
             itemBuilder: (context, i) {
-              final s = stats.topSongs[i];
+              final s = widget.stats.topSongs[i];
               return ListTile(
                 contentPadding: const EdgeInsets.symmetric(
                   horizontal: AppDimensions.screenPaddingH,
@@ -148,17 +176,30 @@ class _StatsBody extends StatelessWidget {
         ],
 
         // ── Top artists ──────────────────────────────────────────────────────
-        if (stats.topArtists.isNotEmpty) ...[
+        if (widget.stats.topArtists.isNotEmpty) ...[
           SliverPadding(
             padding: const EdgeInsets.symmetric(horizontal: AppDimensions.screenPaddingH),
             sliver: SliverToBoxAdapter(
-              child: Text('Top Artists', style: AppTextStyles.titleMedium(color: onBg)),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text('Top Artists', style: AppTextStyles.titleMedium(color: onBg)),
+                  if (widget.stats.topArtists.length > 5)
+                    TextButton(
+                      onPressed: () => setState(() => _showAllArtists = !_showAllArtists),
+                      child: Text(
+                        _showAllArtists ? 'Show Less' : 'See All',
+                        style: AppTextStyles.labelMedium(color: accent),
+                      ),
+                    ),
+                ],
+              ),
             ),
           ),
           SliverList.builder(
-            itemCount: math.min(stats.topArtists.length, 5),
+            itemCount: visibleArtistCount,
             itemBuilder: (context, i) {
-              final a = stats.topArtists[i];
+              final a = widget.stats.topArtists[i];
               return ListTile(
                 contentPadding: const EdgeInsets.symmetric(
                   horizontal: AppDimensions.screenPaddingH,
@@ -199,6 +240,7 @@ class _StatsBody extends StatelessWidget {
 }
 
 // ── Stat card ─────────────────────────────────────────────────────────────────
+
 
 class _StatCard extends StatelessWidget {
   final String label;

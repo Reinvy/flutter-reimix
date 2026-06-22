@@ -50,7 +50,7 @@ class _OnlineMusicScreenState extends ConsumerState<OnlineMusicScreen> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final bgColor = isDark ? AppColorsDark.background : AppColorsLight.background;
     final searchAsync = ref.watch(youtubeSearchProvider);
-    final recents = ref.watch(onlineRecentsProvider);
+    final recents = ref.watch(onlineRecentsProvider).valueOrNull ?? [];
     final activeMood = ref.watch(moodProvider);
     final moodColors = MoodTheme.of(activeMood);
     final query = _ctrl.text.trim();
