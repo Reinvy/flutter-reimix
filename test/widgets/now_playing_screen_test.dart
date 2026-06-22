@@ -24,6 +24,7 @@ ProviderContainer _makeContainer(MockReimixAudioHandler handler, {bool isPlaying
   when(() => handler.positionStream).thenAnswer((_) => const Stream.empty());
   when(() => handler.playingStream).thenAnswer((_) => const Stream.empty());
   when(() => handler.playbackState).thenAnswer((_) => playbackSubject);
+  when(() => handler.mediaItem).thenAnswer((_) => BehaviorSubject<MediaItem?>.seeded(null));
 
   return ProviderContainer(overrides: [audioHandlerProvider.overrideWithValue(handler)]);
 }

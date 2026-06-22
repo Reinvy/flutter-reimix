@@ -50,6 +50,7 @@ void main() {
     when(() => mockHandler.positionStream).thenAnswer((_) => const Stream.empty());
     when(() => mockHandler.playingStream).thenAnswer((_) => const Stream.empty());
     when(() => mockHandler.playbackState).thenAnswer((_) => playbackSubject);
+    when(() => mockHandler.mediaItem).thenAnswer((_) => BehaviorSubject<MediaItem?>.seeded(null));
 
     // Inject into the global so MoodNotifier.setMood doesn't throw.
     app.objectBox = mockDb;

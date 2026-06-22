@@ -38,6 +38,7 @@ void main() {
 
   setUp(() {
     mockHandler = MockReimixAudioHandler();
+    when(() => mockHandler.mediaItem).thenAnswer((_) => BehaviorSubject<MediaItem?>.seeded(null));
   });
 
   group('MiniPlayer – when no song is playing', () {

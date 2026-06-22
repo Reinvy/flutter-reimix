@@ -80,6 +80,7 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
   late final StreamSubscription<Duration> _positionSub;
   late final StreamSubscription<bool> _playingSub;
   late final StreamSubscription<PlaybackState> _playbackSub;
+  late final StreamSubscription<MediaItem?> _mediaItemSub;
   Timer? _sleepTimer;
 
   /// Guards against recording the same song multiple times per queue session.
@@ -106,6 +107,21 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
         speed: pb.speed,
       );
     });
+
+    _mediaItemSub = _handler.mediaItem.listen((item) {
+      List<Song>? handlerQueue;
+      try {
+        final dynamic q = _handler.currentQueue;
+        if (q is List<Song>) {
+          handlerQueue = q;
+        }
+      } catch (_) {}
+
+      state = state.copyWith(
+        currentSong: _handler.currentSong,
+        queue: handlerQueue ?? state.queue,
+      );
+    });
   }
 
   void _checkListenThreshold(Duration position) {
@@ -126,6 +142,7 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
     _positionSub.cancel();
     _playingSub.cancel();
     _playbackSub.cancel();
+    _mediaItemSub.cancel();
     _sleepTimer?.cancel();
     super.dispose();
   }
