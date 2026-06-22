@@ -14,6 +14,7 @@ import '../../providers/mood_provider.dart';
 import '../../providers/player_provider.dart';
 import '../../widgets/glassmorphic_card.dart';
 import '../../widgets/song_list_tile.dart';
+import '../../widgets/reimix_dialog.dart';
 
 enum _SortMode { title, artist, album, dateAdded, duration }
 
@@ -324,7 +325,6 @@ class _SortDialog extends StatelessWidget {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final textColor = isDark ? AppColorsDark.onBackground : AppColorsLight.onBackground;
-    final subtextColor = isDark ? AppColorsDark.subtext : AppColorsLight.subtext;
 
     final options = [
       (_SortMode.title, 'Title', FontAwesomeIcons.arrowDownAZ),
@@ -334,119 +334,31 @@ class _SortDialog extends StatelessWidget {
       (_SortMode.duration, 'Duration', FontAwesomeIcons.clock),
     ];
 
-    return Center(
-      child: Container(
-        margin: const EdgeInsets.symmetric(horizontal: AppDimensions.screenPaddingH),
-        child: GlassmorphicCard(
-          borderRadius: 24,
-          padding: const EdgeInsets.all(20),
-          child: Material(
-            color: Colors.transparent,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                // Header
-                Row(
-                  children: [
-                    Container(
-                      width: 40,
-                      height: 40,
-                      decoration: BoxDecoration(
-                        color: accentColor.withAlpha(30),
-                        shape: BoxShape.circle,
-                      ),
-                      child: Center(
-                        child: FaIcon(FontAwesomeIcons.sort, color: accentColor, size: 16),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Text(
-                        'Sort Songs By',
-                        style: AppTextStyles.titleLarge(color: textColor).copyWith(
-                          fontWeight: FontWeight.w800,
-                        ),
-                      ),
-                    ),
-                    IconButton(
-                      icon: const FaIcon(FontAwesomeIcons.xmark),
-                      color: subtextColor,
-                      iconSize: 18,
-                      onPressed: () => Navigator.pop(context),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                // Options
-                Column(
-                  children: options.map((opt) {
-                    final (mode, label, icon) = opt;
-                    final isSelected = current == mode;
+    return ReimixDialog(
+      title: 'Sort Songs By',
+      icon: FontAwesomeIcons.sort,
+      accentColor: accentColor,
+      body: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: options.map((opt) {
+          final (mode, label, icon) = opt;
+          final isSelected = current == mode;
 
-                    return Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 4),
-                      child: InkWell(
-                        onTap: () => onSelected(mode),
-                        borderRadius: BorderRadius.circular(16),
-                        child: AnimatedContainer(
-                          duration: const Duration(milliseconds: 200),
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                          decoration: BoxDecoration(
-                            color: isSelected
-                                ? accentColor
-                                : Colors.transparent,
-                            borderRadius: BorderRadius.circular(16),
-                            border: Border.all(
-                              color: isSelected
-                                  ? accentColor
-                                  : accentColor.withAlpha(40),
-                              width: 1,
-                            ),
-                            boxShadow: isSelected
-                                ? [
-                                    BoxShadow(
-                                      color: accentColor.withAlpha(65),
-                                      blurRadius: 8,
-                                      offset: const Offset(0, 2),
-                                    ),
-                                  ]
-                                : [],
-                          ),
-                          child: Row(
-                            children: [
-                              FaIcon(
-                                icon,
-                                color: isSelected ? Colors.white : accentColor,
-                                size: 16,
-                              ),
-                              const SizedBox(width: 16),
-                              Expanded(
-                                child: Text(
-                                  label,
-                                  style: AppTextStyles.titleMedium(
-                                    color: isSelected ? Colors.white : textColor,
-                                  ).copyWith(
-                                    fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
-                                  ),
-                                ),
-                              ),
-                              if (isSelected)
-                                const FaIcon(
-                                  FontAwesomeIcons.check,
-                                  color: Colors.white,
-                                  size: 14,
-                                ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    );
-                  }).toList(),
-                ),
-              ],
-            ),
-          ),
-        ),
+          return ReimixDialogMenuItem(
+            icon: icon,
+            label: label,
+            onTap: () => onSelected(mode),
+            iconColor: isSelected ? accentColor : accentColor.withOpacity(0.5),
+            textColor: isSelected ? textColor : textColor.withOpacity(0.6),
+            trailing: isSelected
+                ? FaIcon(
+                    FontAwesomeIcons.check,
+                    color: accentColor,
+                    size: 14,
+                  )
+                : null,
+          );
+        }).toList(),
       ),
     );
   }

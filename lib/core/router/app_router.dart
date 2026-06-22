@@ -6,6 +6,7 @@ import '../../core/utils/notification_service.dart';
 import '../../main.dart' show libraryWasRebuilt;
 import '../../presentation/providers/mood_provider.dart';
 import '../../presentation/providers/player_provider.dart';
+import '../../presentation/providers/error_log_provider.dart';
 import '../../presentation/screens/focus_mode/focus_mode_screen.dart';
 import '../../domain/entities/song.dart';
 import '../../presentation/screens/home/home_screen.dart';
@@ -214,6 +215,9 @@ class _MainShellState extends ConsumerState<_MainShell> {
   @override
   Widget build(BuildContext context) {
     final mood = ref.watch(moodProvider);
+
+    // Keep the error log active to capture errors.
+    ref.listen<List<ErrorLogEntry>>(errorLogProvider, (_, __) {});
 
     // Show a snackbar when an audio file cannot be played, then skip to next.
     ref.listen<AsyncValue<AudioException>>(audioErrorStreamProvider, (_, next) {

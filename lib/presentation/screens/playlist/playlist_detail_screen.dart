@@ -13,6 +13,7 @@ import '../../providers/library_provider.dart';
 import '../../providers/player_provider.dart';
 import '../../providers/playlist_provider.dart';
 import '../../widgets/song_list_tile.dart';
+import '../../widgets/reimix_dialog.dart';
 
 /// Shows songs inside a user-created playlist or a smart playlist.
 ///
@@ -316,9 +317,13 @@ class _EditablePlaylistBodyState extends ConsumerState<_EditablePlaylistBody> {
   Future<void> _confirmRemove(BuildContext context, Song song) async {
     final confirmed = await showDialog<bool>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Remove Song'),
-        content: Text('Remove "${song.title}" from this playlist?'),
+      builder: (ctx) => ReimixDialog(
+        title: 'Remove Song',
+        icon: FontAwesomeIcons.circleMinus,
+        body: Text(
+          'Remove "${song.title}" from this playlist?',
+          style: const TextStyle(height: 1.4),
+        ),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
           TextButton(

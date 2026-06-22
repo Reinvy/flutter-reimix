@@ -1,3 +1,4 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
@@ -800,23 +801,85 @@ class _OnlineMusicScreenState extends ConsumerState<OnlineMusicScreen> {
     Color subtextColor,
     bool isDark,
   ) {
-    showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) {
-        return DraggableScrollableSheet(
-          initialChildSize: 0.6,
-          minChildSize: 0.4,
-          maxChildSize: 0.9,
-          expand: false,
-          builder: (context, scrollController) {
-            return Container(
+    Navigator.push<void>(
+      context,
+      PageRouteBuilder<void>(
+        opaque: false,
+        barrierDismissible: true,
+        barrierColor: Colors.black.withOpacity(0.4),
+        pageBuilder: (context, animation, secondaryAnimation) => BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
+          child: _OnlinePlaylistDetailPage(
+            playlist: playlist,
+            moodAccent: moodAccent,
+            surfaceColor: surfaceColor,
+            textColor: textColor,
+            subtextColor: subtextColor,
+            isDark: isDark,
+          ),
+        ),
+        transitionsBuilder: (context, animation, secondaryAnimation, child) {
+          return SlideTransition(
+            position: Tween<Offset>(
+              begin: const Offset(0, 1),
+              end: Offset.zero,
+            ).animate(CurvedAnimation(parent: animation, curve: Curves.easeOutCubic)),
+            child: child,
+          );
+        },
+      ),
+    );
+  }
+}
+
+// ── Online Playlist Details slide-up page ─────────────────────────────────────
+
+class _OnlinePlaylistDetailPage extends StatelessWidget {
+  final OnlinePlaylist playlist;
+  final Color moodAccent;
+  final Color surfaceColor;
+  final Color textColor;
+  final Color subtextColor;
+  final bool isDark;
+
+  const _OnlinePlaylistDetailPage({
+    required this.playlist,
+    required this.moodAccent,
+    required this.surfaceColor,
+    required this.textColor,
+    required this.subtextColor,
+    required this.isDark,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final borderCol = isDark ? Colors.white.withOpacity(0.1) : Colors.black.withOpacity(0.05);
+
+    return Dismissible(
+      key: const ValueKey('online_playlist_detail_page'),
+      direction: DismissDirection.down,
+      onDismissed: (_) => Navigator.pop(context),
+      child: Scaffold(
+        backgroundColor: Colors.transparent,
+        body: Column(
+          children: [
+            Expanded(
+              child: GestureDetector(
+                onTap: () => Navigator.pop(context),
+                child: Container(
+                  color: Colors.transparent,
+                ),
+              ),
+            ),
+            Container(
+              height: MediaQuery.of(context).size.height * 0.85,
               decoration: BoxDecoration(
-                color: surfaceColor,
-                borderRadius: const BorderRadius.only(
-                  topLeft: Radius.circular(24),
-                  topRight: Radius.circular(24),
+                color: surfaceColor.withOpacity(0.9),
+                borderRadius: const BorderRadius.vertical(
+                  top: Radius.circular(AppDimensions.radiusBottomSheet),
+                ),
+                border: Border(
+                  top: BorderSide(color: borderCol, width: 1.5),
                 ),
               ),
               child: Consumer(
@@ -825,7 +888,7 @@ class _OnlineMusicScreenState extends ConsumerState<OnlineMusicScreen> {
                   return Column(
                     children: [
                       Container(
-                        margin: const EdgeInsets.only(top: 12),
+                        margin: const EdgeInsets.only(top: AppDimensions.sp12),
                         width: 40,
                         height: 4,
                         decoration: BoxDecoration(
@@ -833,45 +896,57 @@ class _OnlineMusicScreenState extends ConsumerState<OnlineMusicScreen> {
                           borderRadius: BorderRadius.circular(2),
                         ),
                       ),
-                      const SizedBox(height: 12),
                       Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 20),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: AppDimensions.sp20,
+                          vertical: AppDimensions.sp16,
+                        ),
                         child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            ClipRRect(
-                              borderRadius: BorderRadius.circular(8),
-                              child: CachedNetworkImage(
-                                imageUrl: playlist.thumbnailUrl,
-                                width: 50,
-                                height: 50,
-                                fit: BoxFit.cover,
-                                errorWidget: (_, __, ___) => const Icon(Icons.music_note),
-                              ),
-                            ),
-                            const SizedBox(width: 12),
                             Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
+                              child: Row(
                                 children: [
-                                  Text(
-                                    playlist.title,
-                                    style: AppTextStyles.titleMedium(color: textColor).copyWith(
-                                      fontWeight: FontWeight.bold,
+                                  ClipRRect(
+                                    borderRadius: BorderRadius.circular(8),
+                                    child: CachedNetworkImage(
+                                      imageUrl: playlist.thumbnailUrl,
+                                      width: 50,
+                                      height: 50,
+                                      fit: BoxFit.cover,
+                                      errorWidget: (_, __, ___) => const Icon(Icons.music_note),
                                     ),
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
                                   ),
-                                  Text(
-                                    '${playlist.videoCount} videos',
-                                    style: AppTextStyles.bodyMedium(color: subtextColor),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          playlist.title,
+                                          style: AppTextStyles.titleMedium(color: textColor).copyWith(
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                        Text(
+                                          '${playlist.videoCount} videos',
+                                          style: AppTextStyles.bodyMedium(color: subtextColor),
+                                        ),
+                                      ],
+                                    ),
                                   ),
                                 ],
                               ),
                             ),
+                            IconButton(
+                              icon: const FaIcon(FontAwesomeIcons.xmark, size: 20),
+                              onPressed: () => Navigator.pop(context),
+                            ),
                           ],
                         ),
                       ),
-                      const SizedBox(height: 12),
                       const Divider(height: 1),
                       Padding(
                         padding: const EdgeInsets.all(12.0),
@@ -912,7 +987,7 @@ class _OnlineMusicScreenState extends ConsumerState<OnlineMusicScreen> {
                               return const Center(child: Text('No videos found in this playlist.'));
                             }
                             return ListView.builder(
-                              controller: scrollController,
+                              padding: EdgeInsets.zero,
                               itemCount: songs.length,
                               itemBuilder: (context, idx) {
                                 final song = songs[idx];
@@ -953,10 +1028,10 @@ class _OnlineMusicScreenState extends ConsumerState<OnlineMusicScreen> {
                   );
                 },
               ),
-            );
-          },
-        );
-      },
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

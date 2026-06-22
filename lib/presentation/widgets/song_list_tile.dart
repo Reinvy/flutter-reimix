@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:ui';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -10,6 +11,7 @@ import '../../core/constants/app_dimensions.dart';
 import '../../core/constants/app_strings.dart';
 import '../../core/constants/app_text_styles.dart';
 import '../../domain/entities/song.dart';
+import 'reimix_dialog.dart';
 
 /// Formats a duration in milliseconds to mm:ss
 String _formatDuration(int ms) {
@@ -104,10 +106,14 @@ class SongListTile extends ConsumerWidget {
   }
 
   void _showContextMenu(BuildContext context, WidgetRef ref) {
-    showModalBottomSheet<void>(
+    showDialog<void>(
       context: context,
-      backgroundColor: Colors.transparent,
-      builder: (ctx) => _SongContextMenu(song: song, ref: ref),
+      barrierDismissible: true,
+      builder: (ctx) => ReimixDialog(
+        title: song.title,
+        icon: FontAwesomeIcons.music,
+        body: _SongContextMenu(song: song, ref: ref),
+      ),
     );
   }
 }
@@ -201,107 +207,40 @@ class _SongContextMenu extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final bgColor = isDark ? AppColorsDark.surface : AppColorsLight.surface;
+    final subtextColor = isDark ? AppColorsDark.subtext : AppColorsLight.subtext;
 
-    return Container(
-      margin: const EdgeInsets.all(AppDimensions.sp16),
-      decoration: BoxDecoration(
-        color: bgColor,
-        borderRadius: BorderRadius.circular(AppDimensions.radiusBottomSheet),
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          // Handle
-          Container(
-            margin: const EdgeInsets.only(top: AppDimensions.sp12),
-            width: 40,
-            height: 4,
-            decoration: BoxDecoration(
-              color: AppColorsLight.divider,
-              borderRadius: BorderRadius.circular(2),
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(left: 4, bottom: AppDimensions.sp12),
+          child: Text(
+            song.artist ?? 'Unknown Artist',
+            style: AppTextStyles.bodyMedium(color: subtextColor).copyWith(
+              fontWeight: FontWeight.bold,
             ),
           ),
-          // Song info header
-          Padding(
-            padding: const EdgeInsets.all(AppDimensions.sp16),
-            child: Row(
-              children: [
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(AppDimensions.sp8),
-                  child: song.albumArtPath != null
-                      ? (song.albumArtPath!.startsWith('http')
-                          ? CachedNetworkImage(
-                              imageUrl: song.albumArtPath!,
-                              width: 48,
-                              height: 48,
-                              fit: BoxFit.cover,
-                              placeholder: (_, __) => _artPlaceholder(),
-                              errorWidget: (_, __, ___) => _artPlaceholder(),
-                            )
-                          : Image.file(
-                              File(song.albumArtPath!),
-                              width: 48,
-                              height: 48,
-                              fit: BoxFit.cover,
-                              errorBuilder: (_, __, ___) => _artPlaceholder(),
-                            ))
-                      : _artPlaceholder(),
-                ),
-                const SizedBox(width: AppDimensions.sp12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        song.title,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: AppTextStyles.titleMedium(),
-                      ),
-                      Text(
-                        song.artist ?? 'Unknown Artist',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: AppTextStyles.bodyMedium(),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const Divider(height: 1, color: AppColorsLight.divider),
-          _ContextMenuItem(
-            icon: FontAwesomeIcons.circlePlay,
-            label: 'Play Next',
-            onTap: () => Navigator.pop(context),
-          ),
-          const _AddToPlaylistItem(),
-          _ContextMenuItem(
-            icon: song.isFavorite ? FontAwesomeIcons.solidHeart : FontAwesomeIcons.heart,
-            label: song.isFavorite ? 'Remove from Favorites' : 'Add to Favorites',
-            onTap: () => Navigator.pop(context),
-          ),
-          _ContextMenuItem(
-            icon: FontAwesomeIcons.shareNodes,
-            label: 'Share',
-            onTap: () => Navigator.pop(context),
-          ),
-          const SizedBox(height: AppDimensions.sp16),
-        ],
-      ),
-    );
-  }
-
-  Widget _artPlaceholder() {
-    return Container(
-      width: 48,
-      height: 48,
-      color: AppColorsLight.primary,
-      child: const Center(
-        child: FaIcon(FontAwesomeIcons.music, color: AppColorsLight.accent, size: 18),
-      ),
+        ),
+        const Divider(height: 1),
+        const SizedBox(height: 8),
+        ReimixDialogMenuItem(
+          icon: FontAwesomeIcons.circlePlay,
+          label: 'Play Next',
+          onTap: () => Navigator.pop(context),
+        ),
+        const _AddToPlaylistItem(),
+        ReimixDialogMenuItem(
+          icon: song.isFavorite ? FontAwesomeIcons.solidHeart : FontAwesomeIcons.heart,
+          label: song.isFavorite ? 'Remove from Favorites' : 'Add to Favorites',
+          onTap: () => Navigator.pop(context),
+        ),
+        ReimixDialogMenuItem(
+          icon: FontAwesomeIcons.shareNodes,
+          label: 'Share',
+          onTap: () => Navigator.pop(context),
+        ),
+      ],
     );
   }
 }
@@ -339,24 +278,18 @@ class _AddToPlaylistItemState extends State<_AddToPlaylistItem> {
     setState(() => _checked = true);
     await Future.delayed(const Duration(milliseconds: 700));
     if (!mounted) return;
-    // ignore: use_build_context_synchronously
     Navigator.pop(context);
   }
 
   @override
   Widget build(BuildContext context) {
-    return ListTile(
-      leading: AnimatedSwitcher(
-        duration: const Duration(milliseconds: 200),
-        transitionBuilder: (child, animation) => ScaleTransition(scale: animation, child: child),
-        child: FaIcon(
-          _checked ? FontAwesomeIcons.solidCircleCheck : FontAwesomeIcons.circlePlus,
-          key: ValueKey(_checked),
-          color: _checked ? Colors.green : AppColorsLight.accent,
-          size: 18,
-        ),
-      ),
-      title: Text(AppStrings.addToPlaylist, style: AppTextStyles.titleMedium()),
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final activeIconColor = isDark ? AppColorsDark.accent : AppColorsLight.accent;
+
+    return ReimixDialogMenuItem(
+      icon: _checked ? FontAwesomeIcons.solidCircleCheck : FontAwesomeIcons.circlePlus,
+      iconColor: _checked ? Colors.green : activeIconColor,
+      label: AppStrings.addToPlaylist,
       onTap: _onTap,
     );
   }

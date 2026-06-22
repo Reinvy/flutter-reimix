@@ -1,6 +1,8 @@
 import 'dart:io';
+import 'dart:ui';
 
 import 'package:flutter/material.dart';
+import '../../widgets/reimix_dialog.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:go_router/go_router.dart';
@@ -308,86 +310,35 @@ class PlaylistsScreen extends ConsumerWidget {
   }
 
   void _showCreateBottomSheet(BuildContext context, WidgetRef ref) {
-    showModalBottomSheet<void>(
+    showDialog<void>(
       context: context,
-      backgroundColor: Colors.transparent,
-      isScrollControlled: true,
-      builder: (ctx) => _CreatePlaylistBottomSheet(
-        onCreate: (name, coverPath) =>
-            ref.read(playlistProvider.notifier).create(name, coverImagePath: coverPath),
+      barrierDismissible: true,
+      builder: (ctx) => ReimixDialog(
+        title: 'New Playlist',
+        icon: FontAwesomeIcons.folderPlus,
+        body: _CreatePlaylistBottomSheet(
+          onCreate: (name, coverPath) =>
+              ref.read(playlistProvider.notifier).create(name, coverImagePath: coverPath),
+        ),
       ),
     );
   }
 
   void _showPlaylistContextSheet(BuildContext context, WidgetRef ref, Playlist pl) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final bgColor = isDark ? AppColorsDark.surface : AppColorsLight.surface;
-    final textColor = isDark ? AppColorsDark.onBackground : AppColorsLight.onBackground;
-    final subtextColor = isDark ? AppColorsDark.subtext : AppColorsLight.subtext;
-
-    showModalBottomSheet<void>(
+    showDialog<void>(
       context: context,
-      backgroundColor: Colors.transparent,
-      builder: (ctx) => Container(
-        margin: const EdgeInsets.all(AppDimensions.sp16),
-        decoration: BoxDecoration(
-          color: bgColor,
-          borderRadius: BorderRadius.circular(AppDimensions.radiusBottomSheet),
-        ),
-        child: Column(
+      barrierDismissible: true,
+      builder: (ctx) => ReimixDialog(
+        title: pl.name,
+        icon: FontAwesomeIcons.listUl,
+        body: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            // Handle
-            Container(
-              margin: const EdgeInsets.only(top: AppDimensions.sp12),
-              width: 40,
-              height: 4,
-              decoration: BoxDecoration(
-                color: isDark ? Colors.white24 : Colors.black12,
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-            // Header Info
-            Padding(
-              padding: const EdgeInsets.all(AppDimensions.sp16),
-              child: Row(
-                children: [
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(AppDimensions.sp8),
-                    child: _buildContextSheetCover(pl),
-                  ),
-                  const SizedBox(width: AppDimensions.sp12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          pl.name,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: AppTextStyles.titleMedium(color: textColor).copyWith(
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        Text(
-                          '${pl.songs.length} ${pl.songs.length == 1 ? 'song' : 'songs'}',
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: AppTextStyles.bodyMedium(color: subtextColor),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const Divider(height: 1),
-            // Play Option
-            ListTile(
-              leading: const FaIcon(FontAwesomeIcons.circlePlay, size: 18),
-              title: Text('Play Playlist', style: AppTextStyles.titleMedium()),
+            ReimixDialogMenuItem(
+              icon: FontAwesomeIcons.circlePlay,
+              label: 'Play Playlist',
               onTap: pl.songs.isEmpty
-                  ? null
+                  ? () {}
                   : () {
                       Navigator.pop(ctx);
                       ref.read(playerProvider.notifier).play(
@@ -397,16 +348,16 @@ class PlaylistsScreen extends ConsumerWidget {
                           );
                     },
             ),
-            // Delete Option
-            ListTile(
-              leading: const FaIcon(FontAwesomeIcons.trashCan, color: Colors.red, size: 18),
-              title: const Text('Delete Playlist', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
+            ReimixDialogMenuItem(
+              icon: FontAwesomeIcons.trashCan,
+              label: 'Delete Playlist',
+              textColor: Colors.red,
+              iconColor: Colors.red,
               onTap: () {
                 Navigator.pop(ctx);
                 _confirmDelete(context, ref, pl);
               },
             ),
-            const SizedBox(height: AppDimensions.sp16),
           ],
         ),
       ),
@@ -454,9 +405,14 @@ class PlaylistsScreen extends ConsumerWidget {
   Future<void> _confirmDelete(BuildContext context, WidgetRef ref, Playlist pl) async {
     final confirmed = await showDialog<bool>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Delete Playlist'),
-        content: Text('Delete "${pl.name}"? This cannot be undone.'),
+      builder: (ctx) => ReimixDialog(
+        title: 'Delete Playlist',
+        icon: FontAwesomeIcons.trashCan,
+        accentColor: Colors.red,
+        body: Text(
+          'Delete "${pl.name}"? This cannot be undone.',
+          style: const TextStyle(height: 1.4),
+        ),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
           TextButton(
@@ -818,7 +774,6 @@ class _CreatePlaylistBottomSheetState extends State<_CreatePlaylistBottomSheet> 
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final bgColor = isDark ? AppColorsDark.surface : AppColorsLight.surface;
     final textColor = isDark ? AppColorsDark.onBackground : AppColorsLight.onBackground;
     final accent = Theme.of(context).colorScheme.tertiary;
 
@@ -826,134 +781,104 @@ class _CreatePlaylistBottomSheetState extends State<_CreatePlaylistBottomSheet> 
       padding: EdgeInsets.only(
         bottom: MediaQuery.of(context).viewInsets.bottom,
       ),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
-        decoration: BoxDecoration(
-          color: bgColor,
-          borderRadius: const BorderRadius.only(
-            topLeft: Radius.circular(28),
-            topRight: Radius.circular(28),
-          ),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Center(
+            child: GestureDetector(
+              onTap: _pickImage,
               child: Container(
-                width: 40,
-                height: 4,
+                width: 100,
+                height: 100,
                 decoration: BoxDecoration(
-                  color: isDark ? Colors.white24 : Colors.black12,
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-            ),
-            const SizedBox(height: 20),
-            Text(
-              'New Playlist',
-              style: AppTextStyles.titleMedium(color: textColor).copyWith(
-                fontWeight: FontWeight.w800,
-                fontSize: 20,
-              ),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 24),
-            Center(
-              child: GestureDetector(
-                onTap: _pickImage,
-                child: Container(
-                  width: 110,
-                  height: 110,
-                  decoration: BoxDecoration(
-                    color: isDark ? Colors.white.withOpacity(0.05) : Colors.black.withOpacity(0.03),
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(
-                      color: isDark ? Colors.white12 : Colors.black12,
-                      width: 1.5,
-                    ),
+                  color: isDark ? Colors.white.withOpacity(0.05) : Colors.black.withOpacity(0.03),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                    color: isDark ? Colors.white12 : Colors.black12,
+                    width: 1.5,
                   ),
-                  child: _coverPath != null
-                      ? ClipRRect(
-                          borderRadius: BorderRadius.circular(18),
-                          child: Image.file(File(_coverPath!), fit: BoxFit.cover),
-                        )
-                      : Center(
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              FaIcon(
-                                FontAwesomeIcons.image,
-                                color: accent,
-                                size: 28,
-                              ),
-                              const SizedBox(height: 6),
-                              Text(
-                                'Add Cover',
-                                style: AppTextStyles.labelSmall(color: accent).copyWith(
+                ),
+                child: _coverPath != null
+                    ? ClipRRect(
+                        borderRadius: BorderRadius.circular(18),
+                        child: Image.file(File(_coverPath!), fit: BoxFit.cover),
+                      )
+                    : Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            FaIcon(
+                              FontAwesomeIcons.image,
+                              color: accent,
+                              size: 24,
+                            ),
+                            const SizedBox(height: 6),
+                            Text(
+                              'Add Cover',
+                              style: AppTextStyles.labelSmall(color: accent).copyWith(
                                   fontWeight: FontWeight.bold,
-                                ),
                               ),
-                            ],
-                          ),
+                            ),
+                          ],
                         ),
-                ),
+                      ),
               ),
             ),
-            const SizedBox(height: 24),
-            TextField(
-              controller: _nameCtrl,
-              autofocus: true,
-              maxLength: 60,
-              style: AppTextStyles.titleMedium(color: textColor),
-              decoration: InputDecoration(
-                labelText: 'Playlist name',
-                labelStyle: TextStyle(color: isDark ? Colors.white70 : Colors.black54),
-                errorText: _error,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(16),
-                  borderSide: BorderSide(color: accent, width: 2),
+          ),
+          const SizedBox(height: 20),
+          TextField(
+            controller: _nameCtrl,
+            autofocus: true,
+            maxLength: 60,
+            style: AppTextStyles.titleMedium(color: textColor),
+            decoration: InputDecoration(
+              labelText: 'Playlist name',
+              labelStyle: TextStyle(color: isDark ? Colors.white70 : Colors.black54),
+              errorText: _error,
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(16),
+                borderSide: BorderSide(color: accent, width: 2),
+              ),
+            ),
+            onSubmitted: (_) => _submit(),
+          ),
+          const SizedBox(height: 20),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: Text(
+                  'Cancel',
+                  style: TextStyle(color: isDark ? Colors.white60 : Colors.black54),
                 ),
               ),
-              onSubmitted: (_) => _submit(),
-            ),
-            const SizedBox(height: 20),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                TextButton(
-                  onPressed: () => Navigator.pop(context),
-                  child: Text(
-                    'Cancel',
-                    style: TextStyle(color: isDark ? Colors.white60 : Colors.black54),
+              const SizedBox(width: 12),
+              ElevatedButton(
+                onPressed: _loading ? null : _submit,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: accent,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
                   ),
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
                 ),
-                const SizedBox(width: 12),
-                ElevatedButton(
-                  onPressed: _loading ? null : _submit,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: accent,
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                  ),
-                  child: _loading
-                      ? const SizedBox(
-                          width: 16,
-                          height: 16,
-                          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                        )
-                      : const Text('Create'),
-                ),
-              ],
-            ),
-          ],
-        ),
+                child: _loading
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                      )
+                    : const Text('Create'),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }

@@ -1,5 +1,8 @@
 import 'dart:io';
+import 'dart:ui';
 import 'package:flutter/material.dart';
+import '../../widgets/reimix_dialog.dart';
+import '../../providers/error_log_provider.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:package_info_plus/package_info_plus.dart';
@@ -590,19 +593,17 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     final controller = TextEditingController();
     showDialog<void>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: surfaceColor,
-        title: Text(
-          'Exclude Folder Path',
-          style: TextStyle(color: textColor, fontWeight: FontWeight.bold),
-        ),
-        content: Column(
+      builder: (ctx) => ReimixDialog(
+        title: 'Exclude Folder Path',
+        icon: FontAwesomeIcons.folderMinus,
+        accentColor: accentColor,
+        body: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
               'Enter a directory path to exclude from library scanning (e.g. /WhatsApp Audio/):',
-              style: TextStyle(color: textColor.withOpacity(0.7), fontSize: 13),
+              style: TextStyle(color: textColor.withOpacity(0.7), fontSize: 13, height: 1.4),
             ),
             const SizedBox(height: 12),
             TextField(
@@ -649,116 +650,187 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     Color accentColor,
     bool isDark,
   ) {
-    showModalBottomSheet<void>(
+    showDialog<void>(
       context: context,
-      backgroundColor: Colors.transparent,
-      builder: (_) => Container(
-        margin: const EdgeInsets.all(AppDimensions.sp16),
-        decoration: BoxDecoration(
-          color: surfaceColor,
-          borderRadius: BorderRadius.circular(AppDimensions.radiusBottomSheet),
-          border: Border.all(
-            color: isDark ? Colors.white.withOpacity(0.08) : Colors.black.withOpacity(0.05),
-            width: 0.5,
-          ),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              margin: const EdgeInsets.only(top: AppDimensions.sp12),
-              width: 40,
-              height: 4,
-              decoration: BoxDecoration(
-                color: isDark ? Colors.white24 : Colors.black12,
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-            const SizedBox(height: 12),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20.0),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    AppStrings.errorLog,
-                    style: AppTextStyles.titleLarge(color: textColor).copyWith(
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                  TextButton.icon(
-                    onPressed: () {},
-                    icon: const FaIcon(FontAwesomeIcons.trashCan, size: 12, color: Colors.red),
-                    label: const Text(
-                      'Clear Logs',
-                      style: TextStyle(color: Colors.red, fontSize: 13, fontWeight: FontWeight.bold),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const Divider(height: 1),
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 40.0, horizontal: 24.0),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Container(
-                    width: 70,
-                    height: 70,
-                    decoration: BoxDecoration(
-                      color: accentColor.withOpacity(0.1),
-                      shape: BoxShape.circle,
-                    ),
-                    child: Center(
-                      child: FaIcon(
-                        FontAwesomeIcons.circleCheck,
-                        color: accentColor,
-                        size: 32,
+      barrierDismissible: true,
+      builder: (ctx) => ReimixDialog(
+        title: AppStrings.errorLog,
+        icon: FontAwesomeIcons.bug,
+        accentColor: accentColor,
+        body: Consumer(
+          builder: (context, ref, child) {
+            final logs = ref.watch(errorLogProvider);
+            return Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 4.0),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      TextButton.icon(
+                        onPressed: logs.isEmpty
+                            ? null
+                            : () {
+                                ref.read(errorLogProvider.notifier).clearLogs();
+                              },
+                        icon: FaIcon(
+                          FontAwesomeIcons.trashCan,
+                          size: 12,
+                          color: logs.isEmpty ? Colors.grey : Colors.red,
+                        ),
+                        label: Text(
+                          'Clear Logs',
+                          style: TextStyle(
+                            color: logs.isEmpty ? Colors.grey : Colors.red,
+                            fontSize: 13,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
                       ),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    'No errors logged.',
-                    style: AppTextStyles.titleMedium(color: textColor).copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    'Everything is running smoothly without issues.',
-                    textAlign: TextAlign.center,
-                    style: AppTextStyles.bodyMedium(color: subtextColor),
-                  ),
-                ],
-              ),
-            ),
-            const Divider(height: 1),
-            Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: () => Navigator.pop(context),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: isDark ? Colors.white10 : Colors.black12,
-                    foregroundColor: textColor,
-                    elevation: 0,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                  ),
-                  child: const Text(
-                    'Close',
-                    style: TextStyle(fontWeight: FontWeight.bold),
+                    ],
                   ),
                 ),
+                const Divider(height: 1),
+                if (logs.isEmpty)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 30.0, horizontal: 12.0),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Container(
+                          width: 60,
+                          height: 60,
+                          decoration: BoxDecoration(
+                            color: accentColor.withOpacity(0.1),
+                            shape: BoxShape.circle,
+                          ),
+                          child: Center(
+                            child: FaIcon(
+                              FontAwesomeIcons.circleCheck,
+                              color: accentColor,
+                              size: 28,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        Text(
+                          'No errors logged.',
+                          style: AppTextStyles.titleMedium(color: textColor).copyWith(
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          'Everything is running smoothly without issues.',
+                          textAlign: TextAlign.center,
+                          style: AppTextStyles.bodyMedium(color: subtextColor),
+                        ),
+                      ],
+                    ),
+                  )
+                else
+                  Container(
+                    constraints: const BoxConstraints(maxHeight: 250),
+                    child: ListView.builder(
+                      shrinkWrap: true,
+                      padding: const EdgeInsets.symmetric(vertical: 8),
+                      itemCount: logs.length,
+                      itemBuilder: (context, index) {
+                        final log = logs[index];
+                        final timeStr =
+                            '${log.timestamp.hour.toString().padLeft(2, '0')}:${log.timestamp.minute.toString().padLeft(2, '0')}:${log.timestamp.second.toString().padLeft(2, '0')}';
+                        return Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 6.0, horizontal: 4.0),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Padding(
+                                    padding: const EdgeInsets.only(top: 2.0),
+                                    child: const FaIcon(
+                                      FontAwesomeIcons.circleExclamation,
+                                      color: Colors.orange,
+                                      size: 14,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          timeStr,
+                                          style: AppTextStyles.labelSmall(color: subtextColor).copyWith(
+                                            fontFamily: 'monospace',
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 2),
+                                        Text(
+                                          log.message,
+                                          style: AppTextStyles.bodyMedium(color: textColor).copyWith(
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                        if (log.details != null && log.details!.isNotEmpty) ...[
+                                          const SizedBox(height: 4),
+                                          Container(
+                                            width: double.infinity,
+                                            padding: const EdgeInsets.all(8),
+                                            decoration: BoxDecoration(
+                                              color: isDark ? Colors.black26 : Colors.black12.withOpacity(0.05),
+                                              borderRadius: BorderRadius.circular(8),
+                                            ),
+                                            child: Text(
+                                              log.details!,
+                                              style: TextStyle(
+                                                color: subtextColor,
+                                                fontSize: 11,
+                                                fontFamily: 'monospace',
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              if (index < logs.length - 1)
+                                const Divider(height: 16, indent: 22),
+                            ],
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+              ],
+            );
+          },
+        ),
+        actions: [
+          Expanded(
+            child: ElevatedButton(
+              onPressed: () => Navigator.pop(ctx),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: isDark ? Colors.white10 : Colors.black12,
+                foregroundColor: textColor,
+                elevation: 0,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                padding: const EdgeInsets.symmetric(vertical: 12),
+              ),
+              child: const Text(
+                'Close',
+                style: TextStyle(fontWeight: FontWeight.bold),
               ),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

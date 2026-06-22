@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 import 'dart:math' as math;
+import 'dart:ui';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -16,6 +17,7 @@ import '../../../core/constants/app_text_styles.dart';
 import '../../../core/utils/notification_service.dart';
 import 'package:permission_handler/permission_handler.dart';
 import '../../providers/player_provider.dart';
+import '../../widgets/reimix_dialog.dart';
 
 // ── Screen ────────────────────────────────────────────────────────────────────
 
@@ -83,9 +85,13 @@ class _FocusModeScreenState extends ConsumerState<FocusModeScreen> with TickerPr
         barrierDismissible: false,
         builder: (ctx) => PopScope(
           canPop: false,
-          child: AlertDialog(
-            title: const Text(AppStrings.permissionNotifRequiredTitle),
-            content: const Text(AppStrings.permissionNotifRequiredBody),
+          child: ReimixDialog(
+            title: AppStrings.permissionNotifRequiredTitle,
+            icon: FontAwesomeIcons.bell,
+            body: const Text(
+              AppStrings.permissionNotifRequiredBody,
+              style: TextStyle(height: 1.4),
+            ),
             actions: [
               TextButton(
                 onPressed: () {
@@ -105,27 +111,31 @@ class _FocusModeScreenState extends ConsumerState<FocusModeScreen> with TickerPr
     final timerActive = playerState.sleepTimeLeft != null || playerState.sleepAtEndOfSong;
     final remaining = playerState.sleepTimeLeft ?? Duration.zero;
 
-    showModalBottomSheet<void>(
+    showDialog<void>(
       context: context,
-      backgroundColor: Colors.transparent,
-      builder: (ctx) => _SleepTimerSheet(
-        isActive: timerActive,
-        remaining: remaining,
-        onSelect: (d, {bool endOfSong = false}) {
-          Navigator.pop(ctx);
-          if (endOfSong) {
+      barrierDismissible: true,
+      builder: (ctx) => ReimixDialog(
+        title: 'Sleep Timer',
+        icon: FontAwesomeIcons.stopwatch,
+        body: _SleepTimerSheet(
+          isActive: timerActive,
+          remaining: remaining,
+          onSelect: (d, {bool endOfSong = false}) {
+            Navigator.pop(ctx);
+            if (endOfSong) {
+              _timerDuration = null;
+              ref.read(playerProvider.notifier).startSleepTimer(Duration.zero, endOfSong: true);
+            } else {
+              _timerDuration = d;
+              ref.read(playerProvider.notifier).startSleepTimer(d);
+            }
+          },
+          onCancel: () {
+            Navigator.pop(ctx);
             _timerDuration = null;
-            ref.read(playerProvider.notifier).startSleepTimer(Duration.zero, endOfSong: true);
-          } else {
-            _timerDuration = d;
-            ref.read(playerProvider.notifier).startSleepTimer(d);
-          }
-        },
-        onCancel: () {
-          Navigator.pop(ctx);
-          _timerDuration = null;
-          ref.read(playerProvider.notifier).cancelSleepTimer();
-        },
+            ref.read(playerProvider.notifier).cancelSleepTimer();
+          },
+        ),
       ),
     );
   }
@@ -423,9 +433,6 @@ class _SleepTimerSheetState extends State<_SleepTimerSheet> {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final bg = isDark ? AppColorsDark.surface : AppColorsLight.surface;
-
     final presets = [
       ('15 min', const Duration(minutes: 15)),
       ('30 min', const Duration(minutes: 30)),
@@ -433,30 +440,10 @@ class _SleepTimerSheetState extends State<_SleepTimerSheet> {
       ('60 min', const Duration(minutes: 60)),
     ];
 
-    return Container(
-      margin: const EdgeInsets.all(AppDimensions.sp16),
-      padding: const EdgeInsets.all(AppDimensions.sp16),
-      decoration: BoxDecoration(
-        color: bg,
-        borderRadius: BorderRadius.circular(AppDimensions.radiusBottomSheet),
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Center(
-            child: Container(
-              width: 40,
-              height: 4,
-              margin: const EdgeInsets.only(bottom: AppDimensions.sp16),
-              decoration: BoxDecoration(
-                color: AppColorsLight.divider,
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-          ),
-          Text('Sleep Timer', style: AppTextStyles.titleLarge()),
-          const SizedBox(height: AppDimensions.sp16),
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
 
           // Preset options
           Wrap(
@@ -501,8 +488,7 @@ class _SleepTimerSheetState extends State<_SleepTimerSheet> {
             ),
           ],
         ],
-      ),
-    );
+      );
   }
 }
 

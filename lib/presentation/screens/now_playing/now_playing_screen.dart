@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:io';
+import 'dart:ui';
 import 'package:flutter/material.dart' hide RepeatMode;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
@@ -517,14 +518,29 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> with Ticker
     );
   }
 
-  // ── Queue bottom sheet ────────────────────────────────────────────────────
+  // ── Queue page route ──────────────────────────────────────────────────────
 
   void _showQueueSheet(BuildContext context, WidgetRef ref, PlayerState playerState) {
-    showModalBottomSheet<void>(
-      context: context,
-      backgroundColor: Colors.transparent,
-      isScrollControlled: true,
-      builder: (_) => _QueueSheet(playerState: playerState, ref: ref),
+    Navigator.push<void>(
+      context,
+      PageRouteBuilder<void>(
+        opaque: false,
+        barrierDismissible: true,
+        barrierColor: Colors.black.withOpacity(0.4),
+        pageBuilder: (context, animation, secondaryAnimation) => BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
+          child: _QueuePage(playerState: playerState, ref: ref),
+        ),
+        transitionsBuilder: (context, animation, secondaryAnimation, child) {
+          return SlideTransition(
+            position: Tween<Offset>(
+              begin: const Offset(0, 1),
+              end: Offset.zero,
+            ).animate(CurvedAnimation(parent: animation, curve: Curves.easeOutCubic)),
+            child: child,
+          );
+        },
+      ),
     );
   }
 }
@@ -948,13 +964,13 @@ class _VisualizerView extends StatelessWidget {
   }
 }
 
-// ── Queue bottom sheet ────────────────────────────────────────────────────────
+// ── Queue full-screen slide-up page ──────────────────────────────────────────
 
-class _QueueSheet extends StatelessWidget {
+class _QueuePage extends StatelessWidget {
   final PlayerState playerState;
   final WidgetRef ref;
 
-  const _QueueSheet({required this.playerState, required this.ref});
+  const _QueuePage({required this.playerState, required this.ref});
 
   @override
   Widget build(BuildContext context) {
@@ -962,78 +978,115 @@ class _QueueSheet extends StatelessWidget {
     final bgColor = isDark ? AppColorsDark.surface : AppColorsLight.surface;
     final queue = playerState.queue;
     final current = playerState.currentSong;
+    final borderCol = isDark ? Colors.white.withOpacity(0.1) : Colors.black.withOpacity(0.05);
 
-    return DraggableScrollableSheet(
-      initialChildSize: 0.6,
-      maxChildSize: 0.95,
-      minChildSize: 0.3,
-      builder: (_, scrollController) {
-        return Container(
-          decoration: BoxDecoration(
-            color: bgColor,
-            borderRadius: const BorderRadius.vertical(
-              top: Radius.circular(AppDimensions.radiusBottomSheet),
-            ),
-          ),
-          child: Column(
-            children: [
-              Container(
-                margin: const EdgeInsets.only(top: AppDimensions.sp12),
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: AppColorsLight.divider,
-                  borderRadius: BorderRadius.circular(2),
+    return Dismissible(
+      key: const ValueKey('queue_page'),
+      direction: DismissDirection.down,
+      onDismissed: (_) => Navigator.pop(context),
+      child: Scaffold(
+        backgroundColor: Colors.transparent,
+        body: Column(
+          children: [
+            // Top transparent area acting as a tap-to-dismiss zone
+            Expanded(
+              child: GestureDetector(
+                onTap: () => Navigator.pop(context),
+                child: Container(
+                  color: Colors.transparent,
                 ),
               ),
-              Padding(
-                padding: const EdgeInsets.all(AppDimensions.sp16),
-                child: Text(AppStrings.queue, style: AppTextStyles.titleLarge()),
+            ),
+            // The actual sliding panel container
+            Container(
+              height: MediaQuery.of(context).size.height * 0.85,
+              decoration: BoxDecoration(
+                color: bgColor.withOpacity(0.9),
+                borderRadius: const BorderRadius.vertical(
+                  top: Radius.circular(AppDimensions.radiusBottomSheet),
+                ),
+                border: Border(
+                  top: BorderSide(color: borderCol, width: 1.5),
+                ),
               ),
-              Expanded(
-                child: queue.isEmpty
-                    ? const Center(child: Text('Queue is empty'))
-                    : ListView.builder(
-                        controller: scrollController,
-                        itemCount: queue.length,
-                        itemBuilder: (_, i) {
-                          final song = queue[i];
-                          return Dismissible(
-                            key: ValueKey('queue_${song.id}_$i'),
-                            direction: DismissDirection.endToStart,
-                            background: Container(
-                              alignment: Alignment.centerRight,
-                              padding: const EdgeInsets.only(right: AppDimensions.sp16),
-                              color: Colors.red.withAlpha(40),
-                              child: const FaIcon(FontAwesomeIcons.trashCan, color: Colors.red, size: 18),
-                            ),
-                            child: SongListTile(
-                              song: song,
-                              isPlaying: current?.id == song.id,
-                              onTap: () {
-                                Navigator.pop(context);
-                                ref
-                                    .read(playerProvider.notifier)
-                                    .play(song, queue: queue, index: i);
-                              },
-                            ),
-                            onDismissed: (_) {
-                              ref.read(playerProvider.notifier).removeFromQueue(i);
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: Text('Removed "${song.title}" from queue'),
-                                  duration: const Duration(seconds: 2),
+              child: Column(
+                children: [
+                  // Handle/drag indicator
+                  Container(
+                    margin: const EdgeInsets.only(top: AppDimensions.sp12),
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: isDark ? Colors.white24 : Colors.black12,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: AppDimensions.sp20,
+                      vertical: AppDimensions.sp16,
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          AppStrings.queue,
+                          style: AppTextStyles.titleLarge().copyWith(fontWeight: FontWeight.w800),
+                        ),
+                        IconButton(
+                          icon: const FaIcon(FontAwesomeIcons.xmark, size: 20),
+                          onPressed: () => Navigator.pop(context),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const Divider(height: 1),
+                  Expanded(
+                    child: queue.isEmpty
+                        ? const Center(child: Text('Queue is empty'))
+                        : ListView.builder(
+                            padding: EdgeInsets.zero,
+                            itemCount: queue.length,
+                            itemBuilder: (_, i) {
+                              final song = queue[i];
+                              return Dismissible(
+                                key: ValueKey('queue_${song.id}_$i'),
+                                direction: DismissDirection.endToStart,
+                                background: Container(
+                                  alignment: Alignment.centerRight,
+                                  padding: const EdgeInsets.only(right: AppDimensions.sp16),
+                                  color: Colors.red.withAlpha(40),
+                                  child: const FaIcon(FontAwesomeIcons.trashCan, color: Colors.red, size: 18),
                                 ),
+                                child: SongListTile(
+                                  song: song,
+                                  isPlaying: current?.id == song.id,
+                                  onTap: () {
+                                    Navigator.pop(context);
+                                    ref
+                                        .read(playerProvider.notifier)
+                                        .play(song, queue: queue, index: i);
+                                  },
+                                ),
+                                onDismissed: (_) {
+                                  ref.read(playerProvider.notifier).removeFromQueue(i);
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text('Removed "${song.title}" from queue'),
+                                      duration: const Duration(seconds: 2),
+                                    ),
+                                  );
+                                },
                               );
                             },
-                          );
-                        },
-                      ),
+                          ),
+                  ),
+                ],
               ),
-            ],
-          ),
-        );
-      },
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

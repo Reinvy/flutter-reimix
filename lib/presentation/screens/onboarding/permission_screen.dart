@@ -13,6 +13,7 @@ import '../../../core/constants/app_strings.dart';
 import '../../../core/constants/app_text_styles.dart';
 import '../../../core/router/app_router.dart';
 import '../../providers/library_provider.dart';
+import '../../widgets/reimix_dialog.dart';
 
 class PermissionScreen extends ConsumerStatefulWidget {
   const PermissionScreen({super.key});
@@ -99,9 +100,13 @@ class _PermissionScreenState extends ConsumerState<PermissionScreen>
       barrierDismissible: false,
       builder: (ctx) => PopScope(
         canPop: false,
-        child: AlertDialog(
-          title: const Text(AppStrings.permissionDeniedTitle),
-          content: const Text(AppStrings.permissionDeniedBody),
+        child: ReimixDialog(
+          title: AppStrings.permissionDeniedTitle,
+          icon: FontAwesomeIcons.circleExclamation,
+          body: const Text(
+            AppStrings.permissionDeniedBody,
+            style: TextStyle(height: 1.4),
+          ),
           actions: [
             TextButton(
               onPressed: () {
@@ -122,9 +127,13 @@ class _PermissionScreenState extends ConsumerState<PermissionScreen>
       barrierDismissible: false,
       builder: (ctx) => PopScope(
         canPop: false,
-        child: AlertDialog(
-          title: const Text(AppStrings.permissionRetryTitle),
-          content: const Text(AppStrings.permissionRetryBody),
+        child: ReimixDialog(
+          title: AppStrings.permissionRetryTitle,
+          icon: FontAwesomeIcons.circleQuestion,
+          body: const Text(
+            AppStrings.permissionRetryBody,
+            style: TextStyle(height: 1.4),
+          ),
           actions: [
             TextButton(
               onPressed: () async {
