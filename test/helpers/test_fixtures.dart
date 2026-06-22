@@ -45,7 +45,7 @@ final Song song1 = fakeSong(id: 1, title: 'Song One', artist: 'Artist A');
 final Song song2 = fakeSong(id: 2, title: 'Song Two', artist: 'Artist B', durationMs: 300000);
 final Song song3 = fakeSong(id: 3, title: 'Song Three', artist: 'Artist A', isFavorite: true);
 final Song songNoArtist = fakeSong(id: 4, title: 'No Artist Song', artist: null);
-final Song longSong = fakeSong(id: 5, title: 'Long Song', durationMs: 3_720_000); // 1h 2m
+final Song longSong = fakeSong(id: 5, title: 'Long Song', durationMs: 3720000); // 1h 2m
 
 // ── Playlist fixtures ─────────────────────────────────────────────────────────
 

@@ -72,7 +72,28 @@ class MediaStoreDatasource {
       return model;
     }).toList();
 
-    _mergeIntoDatabase(incoming);
+    // Retrieve settings to apply duration and folder exclusions
+    final settings = _db.getSettings();
+    final minDurationMs = settings.scanMinDurationSeconds * 1000;
+    final excludedFolders = settings.excludedFolders;
+
+    final filteredIncoming = incoming.where((s) {
+      // Filter out short files
+      if (s.durationMs < minDurationMs) return false;
+
+      // Filter out files in excluded directories
+      final normalizedPath = s.filePath.replaceAll('\\', '/').toLowerCase();
+      for (final folder in excludedFolders) {
+        if (folder.trim().isEmpty) continue;
+        final normalizedFolder = folder.replaceAll('\\', '/').toLowerCase();
+        if (normalizedPath.contains(normalizedFolder)) {
+          return false;
+        }
+      }
+      return true;
+    }).toList();
+
+    _mergeIntoDatabase(filteredIncoming);
     return _db.songBox.getAll();
   }
 

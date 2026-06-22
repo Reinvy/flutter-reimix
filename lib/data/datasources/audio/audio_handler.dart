@@ -7,11 +7,18 @@ import 'package:youtube_explode_dart/youtube_explode_dart.dart';
 import '../../../core/errors/app_exceptions.dart';
 import '../../../domain/entities/song.dart';
 
+class _YtCacheEntry {
+  final Uri uri;
+  final DateTime resolvedAt;
+  _YtCacheEntry(this.uri, this.resolvedAt);
+
+  bool get isExpired => DateTime.now().difference(resolvedAt).inHours >= 4;
+}
+
 /// Background-capable audio handler.
 ///
 /// Extends [BaseAudioHandler] (audio_service) and delegates playback to a
-/// [just_audio] [AudioPlayer].  Manages the current queue, exposes position
-/// and playing-state streams, and keeps the OS media session in sync.
+/// [just_audio] [AudioPlayer] utilizing [ConcatenatingAudioSource] for native queue support.
 class ReimixAudioHandler extends BaseAudioHandler with SeekHandler {
   final _player = AudioPlayer(
     userAgent:
@@ -19,7 +26,9 @@ class ReimixAudioHandler extends BaseAudioHandler with SeekHandler {
     useProxyForRequestHeaders: false,
   );
   final _errorController = StreamController<AudioException>.broadcast();
+  final _ytCache = <String, _YtCacheEntry>{};
 
+  ConcatenatingAudioSource _playlist = ConcatenatingAudioSource(children: []);
   List<Song> _queue = [];
   int _currentIndex = 0;
 
@@ -34,12 +43,19 @@ class ReimixAudioHandler extends BaseAudioHandler with SeekHandler {
       },
     );
 
-    // Auto-advance on track completion
-    _player.processingStateStream.listen((state) {
-      if (state == ProcessingState.completed) {
-        skipToNext();
+    // Monitor current playing item index and update OS metadata + preload next track
+    _player.currentIndexStream.listen((index) {
+      if (index != null && index >= 0 && index < _queue.length) {
+        _currentIndex = index;
+        final song = _queue[_currentIndex];
+        mediaItem.add(song.toMediaItem());
+        
+        // Preload next track
+        _preloadNextSong(index + 1);
       }
     });
+
+    // Auto-advance is handled natively by just_audio because it's a playlist source.
   }
 
   // ── Internal helpers ────────────────────────────────────────────────────────
@@ -75,6 +91,13 @@ class ReimixAudioHandler extends BaseAudioHandler with SeekHandler {
   Future<Uri> _resolveAudioUri(String filePath) async {
     if (filePath.startsWith('youtube://')) {
       final videoId = filePath.replaceFirst('youtube://', '');
+      
+      // Check cache first
+      final cached = _ytCache[videoId];
+      if (cached != null && !cached.isExpired) {
+        return cached.uri;
+      }
+
       final yt = YoutubeExplode();
       try {
         final manifest = await yt.videos.streams.getManifest(
@@ -87,7 +110,11 @@ class ReimixAudioHandler extends BaseAudioHandler with SeekHandler {
           ],
         );
         final audioStream = manifest.audioOnly.withHighestBitrate();
-        return audioStream.url;
+        final url = audioStream.url;
+        
+        // Cache resolved URL
+        _ytCache[videoId] = _YtCacheEntry(url, DateTime.now());
+        return url;
       } catch (e) {
         throw AudioException('Failed to resolve YouTube audio stream for $videoId', cause: e);
       } finally {
@@ -112,22 +139,56 @@ class ReimixAudioHandler extends BaseAudioHandler with SeekHandler {
           'Origin': 'https://www.youtube.com',
           'Referer': 'https://www.youtube.com/',
         },
+        tag: song.toMediaItem(),
       );
     }
-    return AudioSource.uri(resolvedUri);
+    return AudioSource.uri(resolvedUri, tag: song.toMediaItem());
+  }
+
+  Future<void> _preloadNextSong(int index) async {
+    if (index < 0 || index >= _queue.length) return;
+    final nextSong = _queue[index];
+    if (nextSong.filePath.startsWith('youtube://')) {
+      try {
+        final nextSource = await _createAudioSource(nextSong);
+        if (_currentIndex == index - 1) {
+          // Double-check index hasn't changed during async operations
+          await _playlist.insert(index, nextSource);
+          await _playlist.removeAt(index + 1);
+        }
+      } catch (_) {}
+    }
   }
 
   // ── Public API ──────────────────────────────────────────────────────────────
 
-  /// Starts playback of [song], optionally replacing the entire [queue].
+  /// Starts playback of [song], replacing the entire [queue].
   Future<void> playFromSong(Song song, {List<Song>? queue, int queueIndex = 0}) async {
     _queue = queue ?? [song];
     _currentIndex = queueIndex;
     mediaItem.add(song.toMediaItem());
+
     try {
-      final source = await _createAudioSource(song);
-      await _player.setAudioSource(source);
+      final sources = <AudioSource>[];
+      for (int i = 0; i < _queue.length; i++) {
+        final s = _queue[i];
+        if (i == queueIndex) {
+          sources.add(await _createAudioSource(s));
+        } else {
+          // Pre-populate placeholders for YouTube, local source directly for gapless local
+          if (s.filePath.startsWith('youtube://')) {
+            sources.add(AudioSource.uri(Uri.parse('about:blank'), tag: s.toMediaItem()));
+          } else {
+            sources.add(AudioSource.uri(Uri.parse(s.filePath), tag: s.toMediaItem()));
+          }
+        }
+      }
+
+      _playlist = ConcatenatingAudioSource(children: sources);
+      await _player.setAudioSource(_playlist, initialIndex: queueIndex);
       await _player.play();
+
+      _preloadNextSong(queueIndex + 1);
     } catch (e) {
       _errorController.add(
         AudioException(
@@ -157,43 +218,17 @@ class ReimixAudioHandler extends BaseAudioHandler with SeekHandler {
 
   @override
   Future<void> skipToNext() async {
-    if (_currentIndex < _queue.length - 1) {
-      _currentIndex++;
-      final song = _queue[_currentIndex];
-      mediaItem.add(song.toMediaItem());
-      try {
-        final source = await _createAudioSource(song);
-        await _player.setAudioSource(source);
-        await _player.play();
-      } catch (e) {
-        _errorController.add(
-          AudioException('Cannot play "${song.title}" — stream error.', cause: e),
-        );
-      }
-    } else {
-      // End of queue — stop
-      await stop();
+    if (_player.hasNext) {
+      await _player.seekToNext();
     }
   }
 
   @override
   Future<void> skipToPrevious() async {
-    // If more than 3 s in, seek to start; otherwise go to previous track
     if (_player.position.inSeconds > 3) {
       await _player.seek(Duration.zero);
-    } else if (_currentIndex > 0) {
-      _currentIndex--;
-      final song = _queue[_currentIndex];
-      mediaItem.add(song.toMediaItem());
-      try {
-        final source = await _createAudioSource(song);
-        await _player.setAudioSource(source);
-        await _player.play();
-      } catch (e) {
-        _errorController.add(
-          AudioException('Cannot play "${song.title}" — stream error.', cause: e),
-        );
-      }
+    } else if (_player.hasPrevious) {
+      await _player.seekToPrevious();
     } else {
       await _player.seek(Duration.zero);
     }
@@ -234,38 +269,13 @@ class ReimixAudioHandler extends BaseAudioHandler with SeekHandler {
       return;
     }
 
-    final currentPlayingRemoved = (index == _currentIndex);
     _queue.removeAt(index);
-
-    if (currentPlayingRemoved) {
-      if (_currentIndex >= _queue.length) {
-        _currentIndex = _queue.length - 1;
-      }
-      final song = _queue[_currentIndex];
-      mediaItem.add(song.toMediaItem());
-      try {
-        final source = await _createAudioSource(song);
-        await _player.setAudioSource(source);
-        if (_player.playing) {
-          await _player.play();
-        }
-      } catch (e) {
-        _errorController.add(
-          AudioException(
-            'Cannot play "${song.title}" — file may have been moved or deleted.',
-            cause: e,
-          ),
-        );
-      }
-    } else if (index < _currentIndex) {
-      _currentIndex--;
-    }
+    await _playlist.removeAt(index);
   }
-
 
   // ── Convenience streams ─────────────────────────────────────────────────────
 
-  Song? get currentSong => _queue.isNotEmpty ? _queue[_currentIndex] : null;
+  Song? get currentSong => _queue.isNotEmpty && _currentIndex < _queue.length ? _queue[_currentIndex] : null;
 
   List<Song> get currentQueue => List.unmodifiable(_queue);
 
@@ -283,13 +293,13 @@ class ReimixAudioHandler extends BaseAudioHandler with SeekHandler {
 
 extension SongToMediaItem on Song {
   MediaItem toMediaItem() => MediaItem(
-    id: filePath,
-    title: title,
-    artist: artist,
-    album: album,
-    duration: Duration(milliseconds: durationMs),
-    artUri: albumArtPath != null
-        ? (albumArtPath!.startsWith('http') ? Uri.parse(albumArtPath!) : Uri.file(albumArtPath!))
-        : null,
-  );
+        id: filePath,
+        title: title,
+        artist: artist,
+        album: album,
+        duration: Duration(milliseconds: durationMs),
+        artUri: albumArtPath != null
+            ? (albumArtPath!.startsWith('http') ? Uri.parse(albumArtPath!) : Uri.file(albumArtPath!))
+            : null,
+      );
 }

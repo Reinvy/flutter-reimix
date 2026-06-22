@@ -70,10 +70,6 @@ class _FocusModeScreenState extends ConsumerState<FocusModeScreen> with TickerPr
 
   // ── Sleep timer ────────────────────────────────────────────────────────────
   Duration? _timerDuration;
-  Duration _remaining = Duration.zero;
-  Timer? _countdownTimer;
-  bool _timerActive = false;
-  bool _endOfSong = false;
 
   // ── Fade-out animation (10s) ───────────────────────────────────────────────
   late final AnimationController _fadeCtrl;
@@ -91,9 +87,6 @@ class _FocusModeScreenState extends ConsumerState<FocusModeScreen> with TickerPr
 
     _fadeCtrl = AnimationController(vsync: this, duration: const Duration(seconds: 10));
     _fadeAnim = CurvedAnimation(parent: _fadeCtrl, curve: Curves.easeInOut);
-    _fadeCtrl.addStatusListener((status) {
-      if (status == AnimationStatus.completed) _onTimerExpired();
-    });
 
     _initNotifications();
   }
@@ -101,59 +94,10 @@ class _FocusModeScreenState extends ConsumerState<FocusModeScreen> with TickerPr
   @override
   void dispose() {
     _clockTimer?.cancel();
-    _countdownTimer?.cancel();
     _fadeCtrl.dispose();
     WakelockPlus.disable();
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
     super.dispose();
-  }
-
-  // ── Timer logic ────────────────────────────────────────────────────────────
-
-  void _startTimer(Duration duration, {bool endOfSong = false}) {
-    _countdownTimer?.cancel();
-    setState(() {
-      _timerDuration = duration;
-      _remaining = duration;
-      _timerActive = true;
-      _endOfSong = endOfSong;
-    });
-    _fadeCtrl.reset();
-
-    if (endOfSong) return; // handled by player stream
-
-    _countdownTimer = Timer.periodic(const Duration(seconds: 1), (_) {
-      if (!mounted) return;
-      setState(() {
-        if (_remaining.inSeconds <= 1) {
-          _remaining = Duration.zero;
-          _countdownTimer?.cancel();
-          _beginFadeOut();
-        } else {
-          _remaining -= const Duration(seconds: 1);
-        }
-      });
-    });
-  }
-
-  void _cancelTimer() {
-    _countdownTimer?.cancel();
-    _fadeCtrl.stop();
-    setState(() {
-      _timerActive = false;
-      _timerDuration = null;
-      _remaining = Duration.zero;
-    });
-  }
-
-  void _beginFadeOut() {
-    _fadeCtrl.forward();
-  }
-
-  Future<void> _onTimerExpired() async {
-    await _showSleepTimerEndedNotification();
-    await ref.read(playerProvider.notifier).stop();
-    if (mounted) Navigator.of(context).pop();
   }
 
   // ── Sleep timer sheet ──────────────────────────────────────────────────────
@@ -192,19 +136,30 @@ class _FocusModeScreenState extends ConsumerState<FocusModeScreen> with TickerPr
       return;
     }
 
+    final playerState = ref.read(playerProvider);
+    final timerActive = playerState.sleepTimeLeft != null || playerState.sleepAtEndOfSong;
+    final remaining = playerState.sleepTimeLeft ?? Duration.zero;
+
     showModalBottomSheet<void>(
       context: context,
       backgroundColor: Colors.transparent,
       builder: (ctx) => _SleepTimerSheet(
-        isActive: _timerActive,
-        remaining: _remaining,
+        isActive: timerActive,
+        remaining: remaining,
         onSelect: (d, {bool endOfSong = false}) {
           Navigator.pop(ctx);
-          _startTimer(d, endOfSong: endOfSong);
+          if (endOfSong) {
+            _timerDuration = null;
+            ref.read(playerProvider.notifier).startSleepTimer(Duration.zero, endOfSong: true);
+          } else {
+            _timerDuration = d;
+            ref.read(playerProvider.notifier).startSleepTimer(d);
+          }
         },
         onCancel: () {
           Navigator.pop(ctx);
-          _cancelTimer();
+          _timerDuration = null;
+          ref.read(playerProvider.notifier).cancelSleepTimer();
         },
       ),
     );
@@ -217,6 +172,39 @@ class _FocusModeScreenState extends ConsumerState<FocusModeScreen> with TickerPr
     final playerState = ref.watch(playerProvider);
     final song = playerState.currentSong;
     final accent = Theme.of(context).colorScheme.tertiary;
+
+    final sleepTimeLeft = playerState.sleepTimeLeft;
+    final timerActive = sleepTimeLeft != null || playerState.sleepAtEndOfSong;
+    final remaining = sleepTimeLeft ?? Duration.zero;
+    final endOfSong = playerState.sleepAtEndOfSong;
+
+    // Reset local initial duration if timer is no longer active
+    if (!timerActive) {
+      _timerDuration = null;
+    }
+
+    ref.listen<PlayerState>(playerProvider, (prev, next) {
+      final left = next.sleepTimeLeft;
+      if (left != null) {
+        if (left.inSeconds <= 10 && left.inSeconds > 0) {
+          if (!_fadeCtrl.isAnimating && _fadeCtrl.status == AnimationStatus.dismissed) {
+            _fadeCtrl.forward();
+          }
+        }
+      } else {
+        if (_fadeCtrl.status != AnimationStatus.dismissed && !next.sleepAtEndOfSong) {
+          _fadeCtrl.reset();
+        }
+      }
+
+      if (prev?.sleepTimeLeft != null && left == Duration.zero) {
+        if (mounted) Navigator.of(context).pop();
+      }
+
+      if (prev?.sleepAtEndOfSong == true && next.sleepAtEndOfSong == false && !next.isPlaying) {
+        if (mounted) Navigator.of(context).pop();
+      }
+    });
 
     final hh = _now.hour.toString().padLeft(2, '0');
     final mm = _now.minute.toString().padLeft(2, '0');
@@ -320,20 +308,20 @@ class _FocusModeScreenState extends ConsumerState<FocusModeScreen> with TickerPr
                   const SizedBox(height: AppDimensions.sp32),
 
                   // Countdown ring + timer info
-                  if (_timerActive) ...[
+                  if (timerActive) ...[
                     SizedBox(
                       width: 120,
                       height: 120,
                       child: _CountdownRing(
                         progress: _timerDuration != null && _timerDuration!.inSeconds > 0
-                            ? _remaining.inSeconds / _timerDuration!.inSeconds
+                            ? remaining.inSeconds / _timerDuration!.inSeconds
                             : 1.0,
                         color: accent,
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             Text(
-                              _endOfSong ? 'End' : _formatDuration(_remaining),
+                              endOfSong ? 'End' : _formatDuration(remaining),
                               style: AppTextStyles.titleMedium(color: Colors.white),
                             ),
                             Text('left', style: AppTextStyles.bodyMedium(color: Colors.white60)),
@@ -351,7 +339,7 @@ class _FocusModeScreenState extends ConsumerState<FocusModeScreen> with TickerPr
                       side: const BorderSide(color: Colors.white38),
                     ),
                     icon: const FaIcon(FontAwesomeIcons.stopwatch),
-                    label: Text(_timerActive ? 'Edit Timer' : 'Sleep Timer'),
+                    label: Text(timerActive ? 'Edit Timer' : 'Sleep Timer'),
                     onPressed: _showSleepTimerSheet,
                   ),
 

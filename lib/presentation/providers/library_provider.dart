@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/datasources/local/media_store_datasource.dart';
 import '../../data/datasources/local/objectbox_datasource.dart';
 import '../../data/repositories_impl/song_repository_impl.dart';
+import '../../data/repositories_impl/stats_repository_impl.dart';
 import '../../domain/entities/album.dart';
 import '../../domain/entities/artist.dart';
 import '../../domain/entities/song.dart';
@@ -18,6 +19,10 @@ final mediaStoreDatasourceProvider = Provider<MediaStoreDatasource>((ref) {
 
 final songRepositoryProvider = Provider<SongRepositoryImpl>((ref) {
   return SongRepositoryImpl(ref.read(mediaStoreDatasourceProvider), ref.read(_objectBoxProvider));
+});
+
+final statsRepositoryProvider = Provider<StatsRepositoryImpl>((ref) {
+  return StatsRepositoryImpl(ref.read(_objectBoxProvider));
 });
 
 // ── Library notifier ─────────────────────────────────────────────────────────

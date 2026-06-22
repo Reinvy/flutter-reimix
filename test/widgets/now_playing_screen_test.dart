@@ -102,7 +102,7 @@ void main() {
       when(() => mockHandler.seek(any())).thenAnswer((_) async {});
 
       // Give the song a known duration so sliderValue > 0
-      final songWithDuration = fakeSong(id: 1, durationMs: 180_000); // 3 min
+      final songWithDuration = fakeSong(id: 1, durationMs: 180000); // 3 min
       when(
         () => mockHandler.playFromSong(
           any(),

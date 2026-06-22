@@ -5,7 +5,7 @@
   "entities": [
     {
       "id": "1:345115524638201753",
-      "lastPropertyId": "10:5975162044311824273",
+      "lastPropertyId": "12:7082717793105886830",
       "name": "AppSettings",
       "properties": [
         {
@@ -58,6 +58,16 @@
           "id": "10:5975162044311824273",
           "name": "onboardingComplete",
           "type": 1
+        },
+        {
+          "id": "11:1755526775169324259",
+          "name": "scanMinDurationSeconds",
+          "type": 6
+        },
+        {
+          "id": "12:7082717793105886830",
+          "name": "excludedFoldersRaw",
+          "type": 9
         }
       ],
       "relations": []
@@ -200,10 +210,42 @@
         }
       ],
       "relations": []
+    },
+    {
+      "id": "4:746373441526050355",
+      "lastPropertyId": "4:7381891417638906214",
+      "name": "PlayHistoryModel",
+      "properties": [
+        {
+          "id": "1:4652841338042730588",
+          "name": "id",
+          "type": 6,
+          "flags": 1
+        },
+        {
+          "id": "2:8933552287391391095",
+          "name": "songId",
+          "type": 11,
+          "flags": 520,
+          "indexId": "1:3432400812631918064",
+          "relationTarget": "SongModel"
+        },
+        {
+          "id": "3:8216531955370322396",
+          "name": "timestamp",
+          "type": 10
+        },
+        {
+          "id": "4:7381891417638906214",
+          "name": "durationMs",
+          "type": 6
+        }
+      ],
+      "relations": []
     }
   ],
-  "lastEntityId": "3:5057035137856442187",
-  "lastIndexId": "0:0",
+  "lastEntityId": "4:746373441526050355",
+  "lastIndexId": "1:3432400812631918064",
   "lastRelationId": "1:399750363943647580",
   "lastSequenceId": "0:0",
   "modelVersion": 5,

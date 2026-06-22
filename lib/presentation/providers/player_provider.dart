@@ -29,6 +29,7 @@ class PlayerState {
   final double volume;
   final double speed;
   final Duration? sleepTimeLeft;
+  final bool sleepAtEndOfSong;
 
   const PlayerState({
     this.currentSong,
@@ -41,6 +42,7 @@ class PlayerState {
     this.volume = 1.0,
     this.speed = 1.0,
     this.sleepTimeLeft,
+    this.sleepAtEndOfSong = false,
   });
 
   PlayerState copyWith({
@@ -54,6 +56,7 @@ class PlayerState {
     double? volume,
     double? speed,
     Duration? sleepTimeLeft,
+    bool? sleepAtEndOfSong,
     bool clearSleepTimer = false,
   }) {
     return PlayerState(
@@ -67,6 +70,7 @@ class PlayerState {
       volume: volume ?? this.volume,
       speed: speed ?? this.speed,
       sleepTimeLeft: clearSleepTimer ? null : (sleepTimeLeft ?? this.sleepTimeLeft),
+      sleepAtEndOfSong: clearSleepTimer ? false : (sleepAtEndOfSong ?? this.sleepAtEndOfSong),
     );
   }
 }
@@ -82,6 +86,7 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
   late final StreamSubscription<PlaybackState> _playbackSub;
   late final StreamSubscription<MediaItem?> _mediaItemSub;
   Timer? _sleepTimer;
+  double? _originalVolume;
 
   /// Guards against recording the same song multiple times per queue session.
   final _recordedSongs = <int>{};
@@ -117,10 +122,18 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
         }
       } catch (_) {}
 
+      final nextSong = _handler.currentSong;
+      final prevSong = state.currentSong;
+
       state = state.copyWith(
-        currentSong: _handler.currentSong,
+        currentSong: nextSong,
         queue: handlerQueue ?? state.queue,
       );
+
+      // End of song sleep timer trigger
+      if (state.sleepAtEndOfSong && prevSong != null && nextSong != null && prevSong.id != nextSong.id) {
+        _sleepTimerExpired();
+      }
     });
   }
 
@@ -228,18 +241,46 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
 
   // ── Sleep Timer ────────────────────────────────────────────────────────────
 
-  void startSleepTimer(Duration duration) {
+  void _sleepTimerExpired() {
     _sleepTimer?.cancel();
-    state = state.copyWith(sleepTimeLeft: duration);
+    _sleepTimer = null;
+    if (_originalVolume != null) {
+      setVolume(_originalVolume!);
+      _originalVolume = null;
+    }
+    pause();
+    state = state.copyWith(sleepTimeLeft: Duration.zero);
+    Future.delayed(const Duration(milliseconds: 100), () {
+      state = state.copyWith(clearSleepTimer: true);
+    });
+  }
+
+  void startSleepTimer(Duration duration, {bool endOfSong = false}) {
+    _sleepTimer?.cancel();
+    if (_originalVolume != null) {
+      setVolume(_originalVolume!);
+      _originalVolume = null;
+    }
+
+    if (endOfSong) {
+      state = state.copyWith(clearSleepTimer: true, sleepAtEndOfSong: true);
+      return;
+    }
+
+    _originalVolume = state.volume;
+    state = state.copyWith(sleepTimeLeft: duration, sleepAtEndOfSong: false);
     _sleepTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
       final left = state.sleepTimeLeft;
       if (left == null || left.inSeconds <= 1) {
-        timer.cancel();
-        _sleepTimer = null;
-        state = state.copyWith(clearSleepTimer: true);
-        pause();
+        _sleepTimerExpired();
       } else {
-        state = state.copyWith(sleepTimeLeft: left - const Duration(seconds: 1));
+        final newLeft = left - const Duration(seconds: 1);
+        state = state.copyWith(sleepTimeLeft: newLeft);
+        if (newLeft.inSeconds <= 10) {
+          final factor = newLeft.inSeconds / 10.0;
+          final fadeVolume = (_originalVolume ?? state.volume) * factor;
+          _handler.setVolume(fadeVolume);
+        }
       }
     });
   }
@@ -247,6 +288,10 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
   void cancelSleepTimer() {
     _sleepTimer?.cancel();
     _sleepTimer = null;
+    if (_originalVolume != null) {
+      setVolume(_originalVolume!);
+      _originalVolume = null;
+    }
     state = state.copyWith(clearSleepTimer: true);
   }
 

@@ -200,5 +200,21 @@ void main() {
       container.read(playerProvider.notifier).cancelSleepTimer();
       expect(container.read(playerProvider).sleepTimeLeft, isNull);
     });
+
+    test('sleep timer fades out volume and clean up', () async {
+      when(() => mockHandler.setVolume(any())).thenAnswer((_) async {});
+      
+      await container.read(playerProvider.notifier).setVolume(0.8);
+      container.read(playerProvider.notifier).startSleepTimer(const Duration(seconds: 10));
+      
+      // Wait for the first periodic tick (1 second) to trigger volume fade
+      await Future.delayed(const Duration(milliseconds: 1100));
+
+      // Should calculate and set a faded volume (0.8 * (9/10) = 0.72)
+      verify(() => mockHandler.setVolume(any())).called(2);
+
+      container.read(playerProvider.notifier).cancelSleepTimer();
+      expect(container.read(playerProvider).sleepTimeLeft, isNull);
+    });
   });
 }

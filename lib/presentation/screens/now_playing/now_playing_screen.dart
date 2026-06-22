@@ -1041,6 +1041,26 @@ class _LyricsViewState extends State<_LyricsView> {
 
 // ── Visualizer view ───────────────────────────────────────────────────────────
 
+class _VisualizerParticle {
+  double x;
+  double y;
+  double speedY;
+  double size;
+  double opacity;
+  double phase;
+  double driftSpeed;
+
+  _VisualizerParticle({
+    required this.x,
+    required this.y,
+    required this.speedY,
+    required this.size,
+    required this.opacity,
+    required this.phase,
+    required this.driftSpeed,
+  });
+}
+
 class _VisualizerView extends StatefulWidget {
   final bool isPlaying;
   final AnimationController controller;
@@ -1059,27 +1079,67 @@ class _VisualizerView extends StatefulWidget {
 class _VisualizerViewState extends State<_VisualizerView> {
   final List<Offset> _ripples = [];
   final List<double> _rippleProgresses = [];
+  final List<_VisualizerParticle> _particles = [];
   late final Timer _timer;
+  final math.Random _random = math.Random();
 
   @override
   void initState() {
     super.initState();
+
+    // Initialize particles
+    for (int i = 0; i < 25; i++) {
+      _particles.add(_generateParticle(randomY: true));
+    }
+
     _timer = Timer.periodic(const Duration(milliseconds: 16), (timer) {
       if (!mounted) return;
-      bool hasUpdates = false;
       setState(() {
+        // Update ripples
         for (int i = 0; i < _rippleProgresses.length; i++) {
           if (_rippleProgresses[i] < 1.0) {
             _rippleProgresses[i] += 0.03;
-            hasUpdates = true;
           }
         }
         while (_rippleProgresses.isNotEmpty && _rippleProgresses.first >= 1.0) {
           _ripples.removeAt(0);
           _rippleProgresses.removeAt(0);
         }
+
+        // Update particles if playing
+        for (int i = 0; i < _particles.length; i++) {
+          final p = _particles[i];
+          if (widget.isPlaying) {
+            p.y -= p.speedY;
+            p.phase += p.driftSpeed;
+            p.x += math.sin(p.phase) * 0.4;
+            p.opacity -= 0.006;
+          } else {
+            // Very slow idle animation
+            p.y -= p.speedY * 0.2;
+            p.phase += p.driftSpeed * 0.2;
+            p.x += math.sin(p.phase) * 0.1;
+            p.opacity -= 0.001;
+          }
+
+          if (p.y < 0 || p.opacity <= 0) {
+            _particles[i] = _generateParticle(randomY: false);
+          }
+        }
       });
     });
+  }
+
+  _VisualizerParticle _generateParticle({required bool randomY}) {
+    return _VisualizerParticle(
+      x: _random.nextDouble() * 400.0, // Initial guess, adjusted in painter using size.width
+      y: randomY ? _random.nextDouble() * 160.0 : 160.0,
+      speedY: 0.4 + _random.nextDouble() * 1.2,
+      size: 2.0 + _random.nextDouble() * 5.0,
+      opacity: 0.3 + _random.nextDouble() * 0.7,
+      phase: _random.nextDouble() * math.pi * 2,
+      driftSpeed: 0.02 + _random.nextDouble() * 0.05,
+    );
   }
 
   @override
@@ -1113,6 +1173,7 @@ class _VisualizerViewState extends State<_VisualizerView> {
                   color: widget.accentColor,
                   tapRipples: _ripples,
                   rippleProgresses: _rippleProgresses,
+                  particles: _particles,
                 ),
               );
             },
@@ -1129,6 +1190,7 @@ class _FluidWavePainter extends CustomPainter {
   final Color color;
   final List<Offset> tapRipples;
   final List<double> rippleProgresses;
+  final List<_VisualizerParticle> particles;
 
   _FluidWavePainter({
     required this.progress,
@@ -1136,10 +1198,24 @@ class _FluidWavePainter extends CustomPainter {
     required this.color,
     required this.tapRipples,
     required this.rippleProgresses,
+    required this.particles,
   });
 
   @override
   void paint(Canvas canvas, Size size) {
+    // Draw particles first (background particles)
+    for (final p in particles) {
+      // Map x position percentage to actual width dynamically
+      final double actualX = (p.x / 400.0) * size.width;
+      final double actualSize = p.size * (isPlaying ? 1.0 : 0.6);
+      
+      final particlePaint = Paint()
+        ..color = color.withAlpha((p.opacity * 255).round())
+        ..style = PaintingStyle.fill;
+      
+      canvas.drawCircle(Offset(actualX, p.y), actualSize, particlePaint);
+    }
+
     const waveCount = 3;
     final waveColors = [
       color.withAlpha(160),
@@ -1173,6 +1249,7 @@ class _FluidWavePainter extends CustomPainter {
       canvas.drawPath(path, paint);
     }
 
+    // Draw tap ripples on top
     for (int i = 0; i < tapRipples.length; i++) {
       final pos = tapRipples[i];
       final rProgress = rippleProgresses[i];

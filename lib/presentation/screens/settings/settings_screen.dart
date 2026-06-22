@@ -9,6 +9,7 @@ import '../../../core/constants/app_dimensions.dart';
 import '../../../core/constants/app_strings.dart';
 import '../../../core/constants/app_text_styles.dart';
 import '../../../core/theme/mood_theme.dart';
+import '../../../main.dart' show objectBox;
 import '../../providers/mood_provider.dart';
 import '../../providers/theme_provider.dart';
 import '../../widgets/glassmorphic_card.dart';
@@ -26,12 +27,51 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   String _version = '—';
   String _build = '—';
   bool _audioFocusPause = true;
+  int _scanMinDuration = 30;
+  List<String> _excludedFolders = [];
 
   @override
   void initState() {
     super.initState();
     _loadPackageInfo();
     _loadAudioFocusPref();
+    _loadScanSettings();
+  }
+
+  void _loadScanSettings() {
+    final settings = objectBox.getSettings();
+    setState(() {
+      _scanMinDuration = settings.scanMinDurationSeconds;
+      _excludedFolders = List<String>.from(settings.excludedFolders);
+    });
+  }
+
+  void _saveScanMinDuration(int value) {
+    setState(() => _scanMinDuration = value);
+    final settings = objectBox.getSettings();
+    settings.scanMinDurationSeconds = value;
+    objectBox.settingsBox.put(settings);
+  }
+
+  void _addExcludedFolder(String path) {
+    if (path.trim().isEmpty) return;
+    setState(() {
+      if (!_excludedFolders.contains(path)) {
+        _excludedFolders.add(path);
+      }
+    });
+    final settings = objectBox.getSettings();
+    settings.excludedFolders = _excludedFolders;
+    objectBox.settingsBox.put(settings);
+  }
+
+  void _removeExcludedFolder(String path) {
+    setState(() {
+      _excludedFolders.remove(path);
+    });
+    final settings = objectBox.getSettings();
+    settings.excludedFolders = _excludedFolders;
+    objectBox.settingsBox.put(settings);
   }
 
   Future<void> _loadPackageInfo() async {
@@ -195,6 +235,104 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           ),
           const SizedBox(height: AppDimensions.sp24),
 
+          // ── Library & Scanning Section ──────────────────────────────────
+          _SectionHeader(title: 'Library & Scanning', textColor: subtextColor),
+          const SizedBox(height: AppDimensions.sp12),
+          GlassmorphicCard(
+            borderRadius: 24,
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Scan duration threshold slider
+                Text(
+                  'Minimum Song Duration',
+                  style: AppTextStyles.titleMedium(color: textColor).copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'Ignore audio tracks shorter than ${_scanMinDuration}s (e.g. ringtones/alarms)',
+                  style: AppTextStyles.bodyMedium(color: subtextColor),
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Text('0s', style: TextStyle(color: subtextColor)),
+                    Expanded(
+                      child: Slider(
+                        value: _scanMinDuration.toDouble(),
+                        min: 0.0,
+                        max: 120.0,
+                        divisions: 12,
+                        activeColor: accentColor,
+                        label: '${_scanMinDuration}s',
+                        onChanged: (val) {
+                          _saveScanMinDuration(val.toInt());
+                        },
+                      ),
+                    ),
+                    Text('120s', style: TextStyle(color: subtextColor)),
+                  ],
+                ),
+                const Divider(height: 32),
+                
+                // Excluded folders list
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'Excluded Folders',
+                      style: AppTextStyles.titleMedium(color: textColor).copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    IconButton(
+                      icon: FaIcon(FontAwesomeIcons.folderPlus, size: 18, color: accentColor),
+                      onPressed: () => _showAddFolderDialog(context, textColor, surfaceColor, accentColor),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                if (_excludedFolders.isEmpty)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 8.0),
+                    child: Text(
+                      'No folders excluded. Scans all directories.',
+                      style: AppTextStyles.bodyMedium(color: subtextColor).copyWith(
+                        fontStyle: FontStyle.italic,
+                      ),
+                    ),
+                  )
+                else
+                  ListView.builder(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    itemCount: _excludedFolders.length,
+                    itemBuilder: (ctx, idx) {
+                      final path = _excludedFolders[idx];
+                      return ListTile(
+                        contentPadding: EdgeInsets.zero,
+                        leading: FaIcon(FontAwesomeIcons.folderOpen, size: 16, color: subtextColor),
+                        title: Text(
+                          path,
+                          style: AppTextStyles.bodyMedium(color: textColor),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        trailing: IconButton(
+                          icon: const FaIcon(FontAwesomeIcons.trashCan, size: 14, color: Colors.redAccent),
+                          onPressed: () => _removeExcludedFolder(path),
+                        ),
+                      );
+                    },
+                  ),
+              ],
+            ),
+          ),
+          const SizedBox(height: AppDimensions.sp24),
+
           // ── About Section ──────────────────────────────────────────────
           _SectionHeader(title: AppStrings.about, textColor: subtextColor),
           const SizedBox(height: AppDimensions.sp12),
@@ -231,6 +369,61 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             ),
           ),
           const SizedBox(height: 180),
+        ],
+      ),
+    );
+  }
+
+  void _showAddFolderDialog(BuildContext context, Color textColor, Color surfaceColor, Color accentColor) {
+    final controller = TextEditingController();
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: surfaceColor,
+        title: Text(
+          'Exclude Folder Path',
+          style: TextStyle(color: textColor, fontWeight: FontWeight.bold),
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Enter a directory path to exclude from library scanning (e.g. /WhatsApp Audio/):',
+              style: TextStyle(color: textColor.withOpacity(0.7), fontSize: 13),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: controller,
+              style: TextStyle(color: textColor),
+              decoration: InputDecoration(
+                hintText: '/Ringtones',
+                hintStyle: TextStyle(color: textColor.withOpacity(0.4)),
+                enabledBorder: UnderlineInputBorder(
+                  borderSide: BorderSide(color: textColor.withOpacity(0.2)),
+                ),
+                focusedBorder: UnderlineInputBorder(
+                  borderSide: BorderSide(color: accentColor),
+                ),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel', style: TextStyle(color: Colors.grey)),
+          ),
+          TextButton(
+            onPressed: () {
+              final path = controller.text.trim();
+              if (path.isNotEmpty) {
+                _addExcludedFolder(path);
+              }
+              Navigator.pop(ctx);
+            },
+            child: Text('Add', style: TextStyle(color: accentColor, fontWeight: FontWeight.bold)),
+          ),
         ],
       ),
     );
