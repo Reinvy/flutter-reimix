@@ -1,7 +1,9 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:package_info_plus/package_info_plus.dart';
+import 'package:path_provider/path_provider.dart';
 
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_dimensions.dart';
@@ -26,6 +28,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   bool _audioFocusPause = true;
   int _scanMinDuration = 30;
   List<String> _excludedFolders = [];
+  String _streamingQuality = 'auto';
+  int _maxCacheSizeMb = 500;
+  String _cacheSizeStr = 'Calculating...';
 
   @override
   void initState() {
@@ -40,7 +45,80 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       _scanMinDuration = settings.scanMinDurationSeconds;
       _excludedFolders = List<String>.from(settings.excludedFolders);
       _audioFocusPause = settings.audioFocusPause;
+      _streamingQuality = settings.streamingQuality;
+      _maxCacheSizeMb = settings.maxCacheSizeMb;
     });
+    _calculateCacheSize();
+  }
+
+  Future<void> _calculateCacheSize() async {
+    try {
+      final docsDir = await getApplicationDocumentsDirectory();
+      final cacheDir = Directory('${docsDir.path}/yt_cache');
+      if (!await cacheDir.exists()) {
+        if (mounted) {
+          setState(() => _cacheSizeStr = '0.00 MB');
+        }
+        return;
+      }
+      final files = await cacheDir.list(recursive: true).toList();
+      int totalBytes = 0;
+      for (final file in files) {
+        if (file is File) {
+          totalBytes += await file.length();
+        }
+      }
+      final sizeMb = totalBytes / (1024 * 1024);
+      if (mounted) {
+        setState(() => _cacheSizeStr = '${sizeMb.toStringAsFixed(2)} MB');
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() => _cacheSizeStr = '0.00 MB');
+      }
+    }
+  }
+
+  Future<void> _clearCache() async {
+    try {
+      final docsDir = await getApplicationDocumentsDirectory();
+      final cacheDir = Directory('${docsDir.path}/yt_cache');
+      if (await cacheDir.exists()) {
+        await cacheDir.delete(recursive: true);
+      }
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Cache cleared successfully'),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+        _calculateCacheSize();
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to clear cache: $e'),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    }
+  }
+
+  void _saveStreamingQuality(String val) {
+    setState(() => _streamingQuality = val);
+    final settings = objectBox.getSettings();
+    settings.streamingQuality = val;
+    objectBox.settingsBox.put(settings);
+  }
+
+  void _saveMaxCacheSize(int val) {
+    setState(() => _maxCacheSizeMb = val);
+    final settings = objectBox.getSettings();
+    settings.maxCacheSizeMb = val;
+    objectBox.settingsBox.put(settings);
   }
 
   void _saveScanMinDuration(int value) {
@@ -222,6 +300,149 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 activeColor: accentColor,
                 onChanged: _setAudioFocusPause,
               ),
+            ),
+          ),
+          const SizedBox(height: AppDimensions.sp24),
+
+          // ── Online Streaming & Cache Section ─────────────────────────────
+          _SectionHeader(title: 'Online Streaming & Cache', textColor: subtextColor),
+          const SizedBox(height: AppDimensions.sp12),
+          GlassmorphicCard(
+            borderRadius: 24,
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Streaming Quality',
+                  style: AppTextStyles.titleMedium(color: textColor).copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'Select audio stream quality (affects mobile data usage)',
+                  style: AppTextStyles.bodyMedium(color: subtextColor),
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    _QualitySelectionChip(
+                      label: 'Auto',
+                      isSelected: _streamingQuality == 'auto',
+                      accentColor: accentColor,
+                      textColor: textColor,
+                      onTap: () => _saveStreamingQuality('auto'),
+                    ),
+                    const SizedBox(width: 8),
+                    _QualitySelectionChip(
+                      label: 'Low',
+                      isSelected: _streamingQuality == 'low',
+                      accentColor: accentColor,
+                      textColor: textColor,
+                      onTap: () => _saveStreamingQuality('low'),
+                    ),
+                    const SizedBox(width: 8),
+                    _QualitySelectionChip(
+                      label: 'Medium',
+                      isSelected: _streamingQuality == 'medium',
+                      accentColor: accentColor,
+                      textColor: textColor,
+                      onTap: () => _saveStreamingQuality('medium'),
+                    ),
+                    const SizedBox(width: 8),
+                    _QualitySelectionChip(
+                      label: 'High',
+                      isSelected: _streamingQuality == 'high',
+                      accentColor: accentColor,
+                      textColor: textColor,
+                      onTap: () => _saveStreamingQuality('high'),
+                    ),
+                  ],
+                ),
+                const Divider(height: 32),
+                
+                // Max Cache Size Slider
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'Max Disk Cache Size',
+                      style: AppTextStyles.titleMedium(color: textColor).copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    Text(
+                      '${_maxCacheSizeMb} MB',
+                      style: AppTextStyles.titleMedium(color: accentColor).copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'Older streamed tracks will be auto-deleted (LRU) when limit is reached',
+                  style: AppTextStyles.bodyMedium(color: subtextColor),
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Text('100MB', style: TextStyle(color: subtextColor)),
+                    Expanded(
+                      child: Slider(
+                        value: _maxCacheSizeMb.toDouble(),
+                        min: 100.0,
+                        max: 2000.0,
+                        divisions: 19,
+                        activeColor: accentColor,
+                        label: '${_maxCacheSizeMb}MB',
+                        onChanged: (val) {
+                          _saveMaxCacheSize(val.toInt());
+                        },
+                      ),
+                    ),
+                    Text('2GB', style: TextStyle(color: subtextColor)),
+                  ],
+                ),
+                const Divider(height: 32),
+                
+                // Cache info and Clear button
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Current Cache Size',
+                          style: AppTextStyles.titleMedium(color: textColor).copyWith(
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          _cacheSizeStr,
+                          style: AppTextStyles.bodyMedium(color: subtextColor),
+                        ),
+                      ],
+                    ),
+                    ElevatedButton.icon(
+                      onPressed: _clearCache,
+                      icon: const FaIcon(FontAwesomeIcons.trashCan, size: 12),
+                      label: const Text('Clear Cache'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.redAccent.withOpacity(0.12),
+                        foregroundColor: Colors.redAccent,
+                        elevation: 0,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
             ),
           ),
           const SizedBox(height: AppDimensions.sp24),
@@ -801,6 +1022,56 @@ class _SettingsTile extends StatelessWidget {
           : null,
       trailing: trailing,
       onTap: onTap,
+    );
+  }
+}
+
+class _QualitySelectionChip extends StatelessWidget {
+  final String label;
+  final bool isSelected;
+  final Color accentColor;
+  final Color textColor;
+  final VoidCallback onTap;
+
+  const _QualitySelectionChip({
+    required this.label,
+    required this.isSelected,
+    required this.accentColor,
+    required this.textColor,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Expanded(
+      child: GestureDetector(
+        onTap: onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 150),
+          padding: const EdgeInsets.symmetric(vertical: 10),
+          decoration: BoxDecoration(
+            color: isSelected
+                ? accentColor.withOpacity(0.15)
+                : (isDark ? Colors.white.withOpacity(0.04) : Colors.black.withOpacity(0.04)),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: isSelected ? accentColor : Colors.transparent,
+              width: 1.5,
+            ),
+          ),
+          child: Center(
+            child: Text(
+              label,
+              style: AppTextStyles.labelMedium(
+                color: isSelected ? accentColor : textColor.withOpacity(0.7),
+              ).copyWith(
+                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+              ),
+            ),
+          ),
+        ),
+      ),
     );
   }
 }

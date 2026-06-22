@@ -32,6 +32,12 @@ class AppSettings {
   /// Serialized JSON array of folder paths to exclude from scanning.
   String excludedFoldersRaw = '[]';
 
+  /// 'high' | 'medium' | 'low' | 'auto'
+  String streamingQuality = 'auto';
+
+  /// Maximum size of disk cache in MB
+  int maxCacheSizeMb = 500;
+
   @Transient()
   List<String> get excludedFolders {
     try {

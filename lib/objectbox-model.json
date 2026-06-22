@@ -5,7 +5,7 @@
   "entities": [
     {
       "id": "1:345115524638201753",
-      "lastPropertyId": "13:7860704084997709216",
+      "lastPropertyId": "15:2454883274542257889",
       "name": "AppSettings",
       "properties": [
         {
@@ -73,6 +73,16 @@
           "id": "13:7860704084997709216",
           "name": "audioFocusPause",
           "type": 1
+        },
+        {
+          "id": "14:848646738941117060",
+          "name": "streamingQuality",
+          "type": 9
+        },
+        {
+          "id": "15:2454883274542257889",
+          "name": "maxCacheSizeMb",
+          "type": 6
         }
       ],
       "relations": []

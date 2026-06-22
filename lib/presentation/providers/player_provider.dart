@@ -29,6 +29,7 @@ class PlayerState {
   final double speed;
   final Duration? sleepTimeLeft;
   final bool sleepAtEndOfSong;
+  final int? currentBitrate;
 
   const PlayerState({
     this.currentSong,
@@ -42,6 +43,7 @@ class PlayerState {
     this.speed = 1.0,
     this.sleepTimeLeft,
     this.sleepAtEndOfSong = false,
+    this.currentBitrate,
   });
 
   PlayerState copyWith({
@@ -56,7 +58,9 @@ class PlayerState {
     double? speed,
     Duration? sleepTimeLeft,
     bool? sleepAtEndOfSong,
+    int? currentBitrate,
     bool clearSleepTimer = false,
+    bool clearBitrate = false,
   }) {
     return PlayerState(
       currentSong: currentSong ?? this.currentSong,
@@ -70,6 +74,7 @@ class PlayerState {
       speed: speed ?? this.speed,
       sleepTimeLeft: clearSleepTimer ? null : (sleepTimeLeft ?? this.sleepTimeLeft),
       sleepAtEndOfSong: clearSleepTimer ? false : (sleepAtEndOfSong ?? this.sleepAtEndOfSong),
+      currentBitrate: clearBitrate ? null : (currentBitrate ?? this.currentBitrate),
     );
   }
 }
@@ -100,7 +105,6 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
     _playingSub = _handler.playingStream.listen((playing) {
       state = state.copyWith(isPlaying: playing);
     });
-
     _playbackSub = _handler.playbackState.listen((pb) {
       final loading =
           pb.processingState == AudioProcessingState.loading ||
@@ -110,6 +114,7 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
         isLoading: loading,
         position: pb.updatePosition,
         speed: pb.speed,
+        currentBitrate: _handler.currentBitrate,
       );
     });
 
@@ -128,6 +133,7 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
       state = state.copyWith(
         currentSong: nextSong,
         queue: handlerQueue ?? state.queue,
+        currentBitrate: _handler.currentBitrate,
       );
 
       // End of song sleep timer trigger

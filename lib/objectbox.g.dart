@@ -26,7 +26,7 @@ final _entities = <obx_int.ModelEntity>[
   obx_int.ModelEntity(
       id: const obx_int.IdUid(1, 345115524638201753),
       name: 'AppSettings',
-      lastPropertyId: const obx_int.IdUid(13, 7860704084997709216),
+      lastPropertyId: const obx_int.IdUid(15, 2454883274542257889),
       flags: 0,
       properties: <obx_int.ModelProperty>[
         obx_int.ModelProperty(
@@ -93,6 +93,16 @@ final _entities = <obx_int.ModelEntity>[
             id: const obx_int.IdUid(13, 7860704084997709216),
             name: 'audioFocusPause',
             type: 1,
+            flags: 0),
+        obx_int.ModelProperty(
+            id: const obx_int.IdUid(14, 848646738941117060),
+            name: 'streamingQuality',
+            type: 9,
+            flags: 0),
+        obx_int.ModelProperty(
+            id: const obx_int.IdUid(15, 2454883274542257889),
+            name: 'maxCacheSizeMb',
+            type: 6,
             flags: 0)
       ],
       relations: <obx_int.ModelRelation>[],
@@ -364,7 +374,9 @@ obx_int.ModelDefinition getObjectBoxModel() {
           final repeatModeOffset = fbb.writeString(object.repeatMode);
           final excludedFoldersRawOffset =
               fbb.writeString(object.excludedFoldersRaw);
-          fbb.startTable(14);
+          final streamingQualityOffset =
+              fbb.writeString(object.streamingQuality);
+          fbb.startTable(16);
           fbb.addInt64(0, object.id);
           fbb.addOffset(1, themeModeOffset);
           fbb.addOffset(2, activeMoodOffset);
@@ -378,6 +390,8 @@ obx_int.ModelDefinition getObjectBoxModel() {
           fbb.addInt64(10, object.scanMinDurationSeconds);
           fbb.addOffset(11, excludedFoldersRawOffset);
           fbb.addBool(12, object.audioFocusPause);
+          fbb.addOffset(13, streamingQualityOffset);
+          fbb.addInt64(14, object.maxCacheSizeMb);
           fbb.finish(fbb.endTable());
           return object.id;
         },
@@ -411,7 +425,11 @@ obx_int.ModelDefinition getObjectBoxModel() {
                 const fb.StringReader(asciiOptimization: true)
                     .vTableGet(buffer, rootOffset, 26, '')
             ..audioFocusPause =
-                const fb.BoolReader().vTableGet(buffer, rootOffset, 28, false);
+                const fb.BoolReader().vTableGet(buffer, rootOffset, 28, false)
+            ..streamingQuality = const fb.StringReader(asciiOptimization: true)
+                .vTableGet(buffer, rootOffset, 30, '')
+            ..maxCacheSizeMb =
+                const fb.Int64Reader().vTableGet(buffer, rootOffset, 32, 0);
 
           return object;
         }),
@@ -680,6 +698,14 @@ class AppSettings_ {
   /// See [AppSettings.audioFocusPause].
   static final audioFocusPause =
       obx.QueryBooleanProperty<AppSettings>(_entities[0].properties[12]);
+
+  /// See [AppSettings.streamingQuality].
+  static final streamingQuality =
+      obx.QueryStringProperty<AppSettings>(_entities[0].properties[13]);
+
+  /// See [AppSettings.maxCacheSizeMb].
+  static final maxCacheSizeMb =
+      obx.QueryIntegerProperty<AppSettings>(_entities[0].properties[14]);
 }
 
 /// [PlaylistModel] entity fields to define ObjectBox queries.

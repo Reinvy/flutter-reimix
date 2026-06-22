@@ -1,11 +1,15 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:audio_service/audio_service.dart';
+import 'package:audio_session/audio_session.dart';
 import 'package:just_audio/just_audio.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:youtube_explode_dart/youtube_explode_dart.dart';
 
 import '../../../core/errors/app_exceptions.dart';
 import '../../../domain/entities/song.dart';
+import '../../../main.dart' show objectBox;
 
 class _YtCacheEntry {
   final Uri uri;
@@ -21,22 +25,28 @@ class _YtCacheEntry {
 /// [just_audio] [AudioPlayer] utilizing [ConcatenatingAudioSource] for native queue support.
 class ReimixAudioHandler extends BaseAudioHandler with SeekHandler {
   final _player = AudioPlayer(
+    handleInterruptions: false, // Handle manually using AudioSession to support settings
     userAgent:
         'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
     useProxyForRequestHeaders: false,
   );
   final _errorController = StreamController<AudioException>.broadcast();
   final _ytCache = <String, _YtCacheEntry>{};
+  int? _currentBitrate;
+  int? get currentBitrate => _currentBitrate;
 
   ConcatenatingAudioSource _playlist = ConcatenatingAudioSource(children: []);
   List<Song> _queue = [];
   int _currentIndex = 0;
 
   ReimixAudioHandler() {
+    _initAudioSession();
+
     // Forward just_audio events → audio_service playbackState
     _player.playbackEventStream.listen(
       _broadcastState,
       onError: (Object e, StackTrace st) {
+        _handlePlaybackError(e);
         _errorController.add(
           AudioException('Playback error — file may be missing or corrupt.', cause: e),
         );
@@ -56,6 +66,71 @@ class ReimixAudioHandler extends BaseAudioHandler with SeekHandler {
     });
 
     // Auto-advance is handled natively by just_audio because it's a playlist source.
+  }
+
+  Future<void> _initAudioSession() async {
+    try {
+      final session = await AudioSession.instance;
+      await session.configure(const AudioSessionConfiguration.music());
+
+      session.interruptionEventStream.listen((event) {
+        final settings = objectBox.getSettings();
+        if (!settings.audioFocusPause) return; // Do not pause if disabled in settings
+
+        if (event.begin) {
+          switch (event.type) {
+            case AudioInterruptionType.duck:
+              _player.setVolume(0.2);
+              break;
+            case AudioInterruptionType.pause:
+            case AudioInterruptionType.unknown:
+              pause();
+              break;
+          }
+        } else {
+          switch (event.type) {
+            case AudioInterruptionType.duck:
+              _player.setVolume(1.0);
+              break;
+            case AudioInterruptionType.pause:
+              // Optionally resume, but standard is to stay paused after phone calls
+              break;
+            case AudioInterruptionType.unknown:
+              break;
+          }
+        }
+      });
+    } catch (_) {}
+  }
+
+  Future<void> _handlePlaybackError(Object error) async {
+    if (_currentIndex >= 0 && _currentIndex < _queue.length) {
+      final song = _queue[_currentIndex];
+      if (song.filePath.startsWith('youtube://')) {
+        final videoId = song.filePath.replaceFirst('youtube://', '');
+        
+        // Evict expired URL from cache
+        _ytCache.remove(videoId);
+        
+        // Re-resolve URL and replace the active audio source in the playlist
+        try {
+          final position = _player.position;
+          final newSource = await _createAudioSource(song);
+          
+          await _playlist.insert(_currentIndex, newSource);
+          await _playlist.removeAt(_currentIndex + 1);
+          
+          if (_player.playing) {
+            await _player.seek(position);
+            await _player.play();
+          } else {
+            await _player.seek(position);
+          }
+        } catch (_) {
+          // If refresh fails, let the error propagate
+        }
+      }
+    }
   }
 
   // ── Internal helpers ────────────────────────────────────────────────────────
@@ -88,15 +163,138 @@ class ReimixAudioHandler extends BaseAudioHandler with SeekHandler {
     );
   }
 
+  AudioStreamInfo _selectStream(StreamManifest manifest, String quality) {
+    final audioStreams = manifest.audioOnly.toList();
+    if (audioStreams.isEmpty) {
+      throw StateError('No audio streams available');
+    }
+    
+    // Sort by bitrate descending
+    audioStreams.sort((a, b) => b.bitrate.bitsPerSecond.compareTo(a.bitrate.bitsPerSecond));
+    
+    switch (quality) {
+      case 'high':
+        return audioStreams.first; // Highest bitrate
+      case 'low':
+        return audioStreams.last; // Lowest bitrate
+      case 'medium':
+        // Find stream closest to 128kbps (128000 bps)
+        AudioStreamInfo best = audioStreams.first;
+        double minDiff = double.infinity;
+        for (final stream in audioStreams) {
+          final diff = (stream.bitrate.bitsPerSecond - 128000).abs().toDouble();
+          if (diff < minDiff) {
+            minDiff = diff;
+            best = stream;
+          }
+        }
+        return best;
+      case 'auto':
+      default:
+        return audioStreams.first;
+    }
+  }
+
+  void _startBackgroundCache(String videoId, AudioStreamInfo streamInfo) {
+    scheduleMicrotask(() async {
+      final yt = YoutubeExplode();
+      IOSink? fileSink;
+      try {
+        final docsDir = await getApplicationDocumentsDirectory();
+        final cacheDir = Directory('${docsDir.path}/yt_cache');
+        if (!await cacheDir.exists()) {
+          await cacheDir.create(recursive: true);
+        }
+
+        // Enforce LRU cache limit before downloading
+        await _enforceLruCacheLimit(cacheDir);
+
+        final tempFile = File('${cacheDir.path}/$videoId.temp');
+        final targetFile = File('${cacheDir.path}/$videoId.m4a');
+
+        if (await targetFile.exists()) return; // Already cached
+        if (await tempFile.exists()) await tempFile.delete();
+
+        final stream = yt.videos.streams.get(streamInfo);
+        fileSink = tempFile.openWrite();
+        await for (final chunk in stream) {
+          fileSink.add(chunk);
+        }
+        await fileSink.close();
+        fileSink = null;
+
+        await tempFile.rename(targetFile.path);
+      } catch (_) {
+        // Fail silently in background
+      } finally {
+        yt.close();
+        if (fileSink != null) {
+          try {
+            await fileSink.close();
+          } catch (_) {}
+        }
+      }
+    });
+  }
+
+  Future<void> _enforceLruCacheLimit(Directory cacheDir) async {
+    try {
+      final settings = objectBox.getSettings();
+      final maxBytes = settings.maxCacheSizeMb * 1024 * 1024;
+
+      final files = await cacheDir
+          .list()
+          .where((entity) => entity is File && entity.path.endsWith('.m4a'))
+          .cast<File>()
+          .toList();
+      
+      int totalSize = 0;
+      final fileStats = <File, DateTime>{};
+      for (final file in files) {
+        totalSize += await file.length();
+        fileStats[file] = await file.lastModified();
+      }
+
+      if (totalSize < maxBytes) return; // Under limit
+
+      // Sort oldest first
+      files.sort((a, b) => (fileStats[a] ?? DateTime.fromMillisecondsSinceEpoch(0))
+          .compareTo(fileStats[b] ?? DateTime.fromMillisecondsSinceEpoch(0)));
+
+      for (final file in files) {
+        if (totalSize < maxBytes) break;
+        final size = await file.length();
+        await file.delete();
+        totalSize -= size;
+      }
+    } catch (_) {}
+  }
+
   Future<Uri> _resolveAudioUri(String filePath) async {
     if (filePath.startsWith('youtube://')) {
       final videoId = filePath.replaceFirst('youtube://', '');
       
-      // Check cache first
+      // 1. Check disk cache first
+      final docsDir = await getApplicationDocumentsDirectory();
+      final cacheDir = Directory('${docsDir.path}/yt_cache');
+      final cacheFile = File('${cacheDir.path}/$videoId.m4a');
+      if (await cacheFile.exists()) {
+        try {
+          await cacheFile.setLastModified(DateTime.now());
+        } catch (_) {}
+        _currentBitrate = -1; // -1 indicates local disk cache
+        return Uri.file(cacheFile.path);
+      }
+      
+      // 2. Check memory cache next
       final cached = _ytCache[videoId];
       if (cached != null && !cached.isExpired) {
         return cached.uri;
       }
+
+      // 3. Resolve online stream URL
+      final settings = objectBox.getSettings();
+      final quality = settings.streamingQuality;
 
       final yt = YoutubeExplode();
       try {
@@ -109,11 +307,15 @@ class ReimixAudioHandler extends BaseAudioHandler with SeekHandler {
             YoutubeApiClient.ios,
           ],
         );
-        final audioStream = manifest.audioOnly.withHighestBitrate();
+        final audioStream = _selectStream(manifest, quality);
         final url = audioStream.url;
         
-        // Cache resolved URL
         _ytCache[videoId] = _YtCacheEntry(url, DateTime.now());
+        _currentBitrate = audioStream.bitrate.bitsPerSecond;
+        
+        // Start background download to disk cache
+        _startBackgroundCache(videoId, audioStream);
+        
         return url;
       } catch (e) {
         throw AudioException('Failed to resolve YouTube audio stream for $videoId', cause: e);
@@ -121,6 +323,7 @@ class ReimixAudioHandler extends BaseAudioHandler with SeekHandler {
         yt.close();
       }
     }
+    _currentBitrate = null; // Local song
     return Uri.parse(filePath);
   }
 
@@ -152,7 +355,6 @@ class ReimixAudioHandler extends BaseAudioHandler with SeekHandler {
       try {
         final nextSource = await _createAudioSource(nextSong);
         if (_currentIndex == index - 1) {
-          // Double-check index hasn't changed during async operations
           await _playlist.insert(index, nextSource);
           await _playlist.removeAt(index + 1);
         }

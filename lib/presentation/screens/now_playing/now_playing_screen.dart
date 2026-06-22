@@ -707,6 +707,7 @@ class _Seekbar extends ConsumerWidget {
         : Duration.zero;
     final pos = playerState.position;
     final sliderValue = total.inMilliseconds > 0 ? pos.inMilliseconds / total.inMilliseconds : 0.0;
+    final isOnline = playerState.currentSong?.filePath.startsWith('youtube://') ?? false;
 
     return Column(
       mainAxisSize: MainAxisSize.min,
@@ -738,6 +739,22 @@ class _Seekbar extends ConsumerWidget {
             ],
           ),
         ),
+        if (isOnline) ...[
+          const SizedBox(height: 4),
+          Text(
+            playerState.currentBitrate == -1
+                ? 'Cached'
+                : (playerState.currentBitrate != null && playerState.currentBitrate! > 0
+                    ? '${(playerState.currentBitrate! / 1000).round()} kbps'
+                    : 'Streaming...'),
+            style: const TextStyle(
+              color: Colors.white60,
+              fontSize: 10,
+              fontWeight: FontWeight.bold,
+              letterSpacing: 0.5,
+            ),
+          ),
+        ],
       ],
     );
   }
